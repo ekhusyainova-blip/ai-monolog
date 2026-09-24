@@ -391,7 +391,12 @@ tick();
     
     lastT = S.t;
   }
-  
+    
+    if (typeof tick === "undefined") logError("tick не определён");
+    if (typeof render === "undefined") logError("render не определён");
+    if (typeof Monolog === "undefined") logError("Monolog не загружен");
+    else if (typeof Monolog.step === "undefined") logError("Monolog.step не определён");
+    
   function logError(msg) {
     const time = new Date().toLocaleTimeString();
     errors.push(time + " — " + msg);
@@ -443,6 +448,8 @@ tick();
   // Запускаем проверку
   setInterval(check, CHECK_INTERVAL);
   console.log("[watchdog] запущен. проверка каждые 5 сек");
+  
+  
 })();
 </script>
 
