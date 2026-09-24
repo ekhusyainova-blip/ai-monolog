@@ -2,10 +2,16 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>1 : 1 : 1</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0a0a12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Monolog">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; background: #0a0a12; }
 body {
   color: #e0e0e0;
@@ -13,6 +19,8 @@ body {
   font-size: 12px;
   display: flex; flex-direction: column;
   height: 100dvh; overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 header {
@@ -33,11 +41,13 @@ header .mode.alive { color: #4ade80; }
 main {
   flex: 1 1 auto; min-height: 0; overflow-y: auto;
   padding: 8px; display: flex; flex-direction: column; gap: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .panel {
   background: #12121e; border-radius: 6px;
   padding: 10px 12px; border: 1px solid #1f1f33;
+  flex: 0 0 auto;
 }
 .panel h3 {
   font-size: 10px; color: #8888aa;
@@ -58,13 +68,6 @@ main {
 .state-silence { color: #f59e0b; }
 .state-still   { color: #ef4444; }
 
-.grid2 {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-}
-@media (max-width: 500px) {
-  .grid2 { grid-template-columns: 1fr; }
-}
-
 .row {
   display: flex; justify-content: space-between;
   font-size: 11px; padding: 2px 0;
@@ -73,12 +76,10 @@ main {
 .row .val { color: #e0e0e0; }
 
 #log {
-  font-size: 11px; max-height: 150px; overflow-y: auto;
+  font-size: 11px; max-height: 120px; overflow-y: auto;
 }
 #log .entry { padding: 3px 0; border-bottom: 1px solid #1a1a2e; }
 #log .entry .t { color: #4ade80; margin-right: 6px; }
-#log .entry.ev { color: #f59e0b; }
-#log .entry.still { color: #ef4444; }
 
 footer {
   flex: 0 0 auto; border-top: 1px solid #1f1f33;
@@ -89,25 +90,20 @@ footer {
   flex: 1; background: #12121e;
   border: 1px solid #1f1f33; border-radius: 4px;
   padding: 10px 12px; color: #e0e0e0;
-  font-family: inherit; font-size: 14px; outline: none;
+  font-family: inherit; font-size: 16px; outline: none;
 }
 #input:focus { border-color: #60a5fa; }
 #input::placeholder { color: #444; }
 
-#status {
-  position: fixed; top: 6px; right: 8px;
-  font-size: 9px; color: #4ade80; z-index: 20;
-}
-#status.off { color: #ef4444; }
-
 body.still .panel, body.still footer {
-  opacity: 0.08; pointer-events: none;
-  transition: opacity 0.8s ease;
+  opacity: 0.15; transition: opacity 0.8s ease;
 }
 body.still header { opacity: 0.4; }
+body.still #input { opacity: 0.5; pointer-events: auto; }
 </style>
 </head>
 <body>
+
 <header>
   1 : 1 : 1
   <span class="mode" id="mode">● alive</span>
@@ -117,23 +113,22 @@ body.still header { opacity: 0.4; }
 
   <div class="panel">
     <h3>состояние</h3>
-    <div class="state-big" id="state-icon">●</div>
-    <div class="row"><span class="lbl">режим</span><span class="val" id="v-mode">—</span></div>
+    <div class="state-big state-alive" id="state-icon">●</div>
+    <div class="row"><span class="lbl">режим</span><span class="val" id="v-mode">alive</span></div>
     <div class="row"><span class="lbl">t</span><span class="val" id="v-t">0</span></div>
-    <div class="row"><span class="lbl">рождена</span><span class="val" id="v-born">—</span></div>
-    <div class="row"><span class="lbl">silence</span><span class="val" id="v-sil">—</span></div>
-    <div class="row"><span class="lbl">human</span><span class="val" id="v-human">—</span></div>
+    <div class="row"><span class="lbl">рождена</span><span class="val" id="v-born">нет</span></div>
+    <div class="row"><span class="lbl">silence</span><span class="val" id="v-sil">0.000</span></div>
+    <div class="row"><span class="lbl">human</span><span class="val" id="v-human">0.00</span></div>
   </div>
 
-  <div class="grid2">
-    <div class="panel">
-      <h3>ядро 1:1:1</h3>
-      <pre class="ascii" id="orbit"></pre>
-    </div>
-    <div class="panel">
-      <h3>память</h3>
-      <pre class="ascii" id="memory"></pre>
-    </div>
+  <div class="panel">
+    <h3>ядро 1:1:1</h3>
+    <pre class="ascii" id="orbit"></pre>
+  </div>
+
+  <div class="panel">
+    <h3>память</h3>
+    <pre class="ascii" id="memory"></pre>
   </div>
 
   <div class="panel">
@@ -144,123 +139,162 @@ body.still header { opacity: 0.4; }
 </main>
 
 <footer>
-  <input id="input" placeholder="напиши сигнал..." autocomplete="off">
+  <input id="input" placeholder="напиши сигнал..." autocomplete="off" autocorrect="off" autocapitalize="off">
 </footer>
 
-<div id="status">●</div>
-
+<script src="/static/monolog.js"></script>
 <script>
-var $ = function(id) { return document.getElementById(id); };
+const $ = (id) => document.getElementById(id);
 
+// ─── Состояние ───
+let S = Monolog.create();
+let messages = [];
+let human = new Array(8).fill(0);
+let lastHumanTime = 0;
+
+// ─── Восстановление ───
+try {
+  const saved = localStorage.getItem("monolog_state");
+  if (saved) {
+    const data = JSON.parse(saved);
+    S = data.S;
+    messages = data.messages || [];
+  }
+} catch(e) {}
+
+// ─── Сохранение ───
+function save() {
+  try {
+    localStorage.setItem("monolog_state", JSON.stringify({
+      S: S,
+      messages: messages,
+    }));
+  } catch(e) {}
+}
+
+// ─── Рендер ───
 function bar(val, max, width) {
-  var filled = Math.round((val / max) * width);
-  filled = Math.max(0, Math.min(width, filled));
-  return "▓".repeat(filled) + "░".repeat(width - filled);
+  const filled = Math.round((val / max) * width);
+  return "▓".repeat(Math.max(0, Math.min(width, filled))) +
+         "░".repeat(Math.max(0, width - filled));
 }
 
 function renderOrbit(p) {
-  var l1 = "  core    " + bar(p[0], 1, 16) + "  " + p[0].toFixed(3);
-  var l2 = "  method  " + bar(p[1], 1, 16) + "  " + p[1].toFixed(3);
-  var l3 = "  ethics  " + bar(p[2], 1, 16) + "  " + p[2].toFixed(3);
-  var std = Math.sqrt((Math.pow(p[0]-p[1],2)+Math.pow(p[1]-p[2],2)+Math.pow(p[2]-p[0],2))/3);
-  var l4 = std < 0.05 ? "  ● равновесие" : std < 0.15 ? "  ◐ дыхание" : "  ○ дрейф";
+  const l1 = "  core    " + bar(p[0], 1, 16) + "  " + p[0].toFixed(3);
+  const l2 = "  method  " + bar(p[1], 1, 16) + "  " + p[1].toFixed(3);
+  const l3 = "  ethics  " + bar(p[2], 1, 16) + "  " + p[2].toFixed(3);
+  const std = Math.sqrt(
+    (Math.pow(p[0]-p[1],2)+Math.pow(p[1]-p[2],2)+Math.pow(p[2]-p[0],2))/3
+  );
+  const l4 = std < 0.05 ? "  ● равновесие" : std < 0.15 ? "  ◐ дыхание" : "  ○ дрейф";
   return l1 + "\n" + l2 + "\n" + l3 + "\n\n" + l4;
 }
 
 function renderMemory(mem) {
-  return "  следов    " + mem.length + "\n" +
-         "  лимит     1000\n" +
-         "  забыто    " + (mem.length > 900 ? "~" + (mem.length - 900) : "0");
+  return "  следов    " + mem.length + "\n  лимит     1000";
 }
 
-var ws;
-function connect() {
-  var proto = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(proto + "//" + location.host + "/ws");
-
-  ws.onopen = function() {
-    $("status").textContent = "●";
-    $("status").className = "";
-  };
-  ws.onclose = function() {
-    $("status").textContent = "○";
-    $("status").className = "off";
-    setTimeout(connect, 2000);
-  };
-
-  ws.onmessage = function(e) {
-    var d = JSON.parse(e.data);
-
-    $("orbit").textContent = renderOrbit(d.pillars);
-    $("memory").textContent = 
-      "  следов    " + (d.memory_traces || 0) + "\n" +
-      "  лимит     1000";
-
-    $("v-t").textContent = d.t;
-    $("v-born").textContent = d.born ? "да" : "нет";
-    $("v-sil").textContent = d.silence_level.toFixed(3);
-    $("v-human").textContent = d.human_norm.toFixed(2);
-    $("v-mode").textContent = d.mode;
-
-    var icon = $("state-icon");
-    if (d.mode === "still") {
-      icon.textContent = "∅";
-      icon.className = "state-big state-still";
-      $("mode").textContent = "∅ безмолвие";
-      $("mode").className = "mode still";
-      document.body.classList.add("still");
-    } else if (d.mode === "silence") {
-      icon.textContent = "○";
-      icon.className = "state-big state-silence";
-      $("mode").textContent = "○ молчание";
-      $("mode").className = "mode silence";
-      document.body.classList.remove("still");
-    } else {
-      icon.textContent = "●";
-      icon.className = "state-big state-alive";
-      $("mode").textContent = "● alive";
-      $("mode").className = "mode alive";
-      document.body.classList.remove("still");
-    }
-
-    var log = $("log");
-    if (d.messages && d.messages.length > 0) {
-      log.innerHTML = d.messages.map(function(m) {
-        var cls = "entry";
-        if (m.text === "равновесие") cls += " ev";
-        return '<div class="' + cls + '"><span class="t">t=' + m.t + '</span>' + m.text + '</div>';
-      }).join("");
-      log.scrollTop = log.scrollHeight;
-    }
-  };
+function renderMode(mode) {
+  const icon = $("state-icon");
+  const m = $("mode");
+  if (mode === "still") {
+    icon.textContent = "∅";
+    icon.className = "state-big state-still";
+    m.textContent = "∅ безмолвие";
+    m.className = "mode still";
+    document.body.classList.add("still");
+  } else if (mode === "silence") {
+    icon.textContent = "○";
+    icon.className = "state-big state-silence";
+    m.textContent = "○ молчание";
+    m.className = "mode silence";
+    document.body.classList.remove("still");
+  } else {
+    icon.textContent = "●";
+    icon.className = "state-big state-alive";
+    m.textContent = "● alive";
+    m.className = "mode alive";
+    document.body.classList.remove("still");
+  }
 }
 
-var inputTimer = null;
-$("input").addEventListener("input", function(e) {
+function render() {
+  $("orbit").textContent = renderOrbit(S.p);
+  $("memory").textContent = renderMemory(S.mem);
+  $("v-t").textContent = S.t;
+  $("v-born").textContent = S.born ? "да" : "нет";
+  $("v-sil").textContent = S.silence.toFixed(3);
+  $("v-mode").textContent = S.mode || "alive";
+
+  const humanNorm = Math.sqrt(human.reduce((s, x) => s + x*x, 0));
+  $("v-human").textContent = humanNorm.toFixed(2);
+
+  renderMode(S.mode || "alive");
+
+  const log = $("log");
+  if (messages.length > 0) {
+    log.innerHTML = messages.slice(-5).map(m =>
+      '<div class="entry"><span class="t">t=' + m.t + '</span>' + m.text + '</div>'
+    ).join("");
+    log.scrollTop = log.scrollHeight;
+  }
+}
+
+// ─── Цикл ───
+function tick() {
+  // человеческий сигнал затухает
+  const now = Date.now();
+  if (now - lastHumanTime > 1000) {
+    human = human.map(x => x * 0.9);
+  }
+
+  const result = Monolog.step(S, human);
+  S.mode = result.mode;
+
+  if (result.response && (now - lastHumanTime) < 500) {
+    messages.push({ t: S.t, text: result.response });
+    if (messages.length > 30) messages.shift();
+  }
+
+  render();
+
+  // сохраняем раз в 100 шагов
+  if (S.t % 100 === 0) save();
+
+  setTimeout(tick, 50);
+}
+
+// ─── Ввод ───
+let inputTimer = null;
+$("input").addEventListener("input", (e) => {
   clearTimeout(inputTimer);
-  inputTimer = setTimeout(function() {
-    var text = e.target.value.trim();
-    var values = hashToVector(text);
-    if (ws && ws.readyState === 1) {
-      ws.send(JSON.stringify({ type: "signal", values: values }));
-    }
+  inputTimer = setTimeout(() => {
+    const text = e.target.value.trim();
+    human = hashToVector(text);
+    lastHumanTime = Date.now();
   }, 300);
 });
 
 function hashToVector(text) {
-  var v = [0,0,0,0,0,0,0,0];
+  const v = [0,0,0,0,0,0,0,0];
   if (!text) return v;
-  for (var i = 0; i < text.length; i++) {
+  for (let i = 0; i < text.length; i++) {
     v[i % 8] += Math.sin(text.charCodeAt(i) * 0.1) * 0.5;
   }
-  var norm = 0;
-  for (var i = 0; i < 8; i++) norm += v[i] * v[i];
+  let norm = 0;
+  for (let i = 0; i < 8; i++) norm += v[i] * v[i];
   norm = Math.sqrt(norm);
-  if (norm > 0) for (var i = 0; i < 8; i++) v[i] /= norm;
+  if (norm > 0) for (let i = 0; i < 8; i++) v[i] /= norm;
   return v;
 }
 
-connect();
+// ─── Service Worker ───
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/static/service-worker.js");
+}
+
+// ─── Старт ───
+tick();
 </script>
 </body>
 </html>
