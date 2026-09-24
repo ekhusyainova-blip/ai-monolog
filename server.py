@@ -96,7 +96,16 @@ async def ping():
     """Пинг для cron — не даёт Render заснуть."""
     return {"status": "alive", "t": STATE.t}
 
+import os
 
+@app.get("/api/config")
+async def config():
+    return {
+        "token": os.environ.get("GITHUB_TOKEN", ""),
+        "user": os.environ.get("GITHUB_USER", ""),
+        "repo": os.environ.get("GITHUB_REPO", "ai-monolog"),
+    }
+    
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
