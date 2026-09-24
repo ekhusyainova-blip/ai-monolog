@@ -449,9 +449,36 @@ tick();
   setInterval(check, CHECK_INTERVAL);
   console.log("[watchdog] запущен. проверка каждые 5 сек");
   
-  
 })();
 </script>
-
+<script>
+// ДИАГНОСТИКА — что определено
+setTimeout(function() {
+  var report = [];
+  report.push("tick: " + (typeof tick));
+  report.push("render: " + (typeof render));
+  report.push("Monolog: " + (typeof Monolog));
+  if (typeof Monolog !== "undefined") {
+    report.push("Monolog.create: " + (typeof Monolog.create));
+    report.push("Monolog.step: " + (typeof Monolog.step));
+  }
+  report.push("S: " + (typeof S));
+  if (typeof S !== "undefined" && S) {
+    report.push("S.t: " + S.t);
+    report.push("S.p: " + JSON.stringify(S.p));
+  }
+  report.push("messages: " + (typeof messages));
+  
+  var panel = document.createElement("div");
+  panel.style.cssText = 
+    "position: fixed; top: 60px; left: 8px; right: 8px; " +
+    "background: #1a1a2e; border: 1px solid #f59e0b; " +
+    "border-radius: 6px; padding: 8px; font-size: 11px; " +
+    "color: #f59e0b; max-height: 200px; overflow-y: auto; " +
+    "z-index: 200; white-space: pre-wrap;";
+  panel.textContent = report.join("\n");
+  document.body.appendChild(panel);
+}, 2000);
+</script>
 </body>
 </html>
