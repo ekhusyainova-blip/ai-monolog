@@ -35,6 +35,13 @@ header .mode {
 header .mode.still { color: #ef4444; }
 header .mode.silence { color: #f59e0b; }
 header .mode.alive { color: #4ade80; }
+header .mic {
+  position: absolute; left: 10px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px; color: #8888aa;
+}
+header .mic.on { color: #4ade80; }
+header .mic.off { color: #ef4444; }
 main {
   flex: 1 1 auto; min-height: 0; overflow-y: auto;
   padding: 8px; display: flex; flex-direction: column; gap: 8px;
@@ -94,6 +101,7 @@ body.silence .panel { opacity: 0.6; }
 <body>
 
 <header>
+  <span class="mic off" id="mic-status">● mic</span>
   1 : 1 : 1
   <span class="mode" id="mode">● alive</span>
 </header>
@@ -110,6 +118,8 @@ body.silence .panel { opacity: 0.6; }
     <div class="row"><span class="lbl">pulse</span><span class="val" id="v-pulse">0.00</span></div>
     <div class="row"><span class="lbl">silence</span><span class="val" id="v-sil">0.000</span></div>
     <div class="row"><span class="lbl">human</span><span class="val" id="v-human">0.00</span></div>
+    <div class="row"><span class="lbl">voice</span><span class="val" id="v-voice">0.00</span></div>
+    <div class="row"><span class="lbl">память</span><span class="val" id="v-memories">0</span></div>
   </div>
 
   <div class="panel">
@@ -128,12 +138,6 @@ body.silence .panel { opacity: 0.6; }
   </div>
 
   <div class="panel">
-    <h3>память</h3>
-    <div class="row"><span class="lbl">следов</span><span class="val" id="v-mem">0</span></div>
-    <div class="row"><span class="lbl">рождена</span><span class="val" id="v-born">нет</span></div>
-  </div>
-
-  <div class="panel">
     <h3>ответы</h3>
     <div id="log"></div>
   </div>
@@ -149,9 +153,9 @@ body.silence .panel { opacity: 0.6; }
 <script>
 // ─── КОНФИГ ───
 window.__config = {
-  token: null,           // получим с сервера
-  user: "ТВОЙ_ЛОГИН",    // ЗАМЕНИ на свой логин GitHub
-  repo: "ai-monolog",    // имя репо
+  token: null,
+  user: "ТВОЙ_ЛОГИН",
+  repo: "ai-monolog",
   path: "static/index.html"
 };
 
@@ -159,9 +163,12 @@ window.__config = {
 var S = Monolog.create();
 var messages = [];
 var human = [0,0,0,0,0,0,0,0];
+var voice = { pitch: 0, volume: 0, rhythm: 0 };
 var lastHumanTime = 0;
+var lastVoiceTime = 0;
 var pulsePhase = 0;
 var pulse = 0;
+var memoryCount = 0;
 
 function $(id) { return document.getElementById(id); }
 
@@ -204,11 +211,12 @@ function render() {
   $("v-t").textContent = S.t;
   $("v-sil").textContent = S.silence.toFixed(3);
   $("v-mode").textContent = S.mode || "alive";
-  $("v-born").textContent = S.born ? "да" : "нет";
-  $("v-mem").textContent = S.mem.length;
 
   var humanNorm = Math.sqrt(human.reduce(function(s, x) { return s + x*x; }, 0));
+  var voiceNorm = voice.pitch + voice.volume + voice.rhythm;
   $("v-human").textContent = humanNorm.toFixed(2);
+  $("v-voice").textContent = (voiceNorm / 3).toFixed(2);
+  $("v-memories").textContent = memoryCount;
 
   // ─── АДАПТИВНЫЙ ПУЛЬС ───
   var rate = 0.05 * (1 - S.silence) + 0.005 * S.b[2];
@@ -273,12 +281,80 @@ function tick() {
     render();
   } catch (e) {
     console.error("[tick error]", e);
-    // SELFHEAL — попытка исправить себя
     var currentCode = document.documentElement.outerHTML;
     SelfHeal.heal(e.message, currentCode, window.__config);
     return;
   }
   setTimeout(tick, 50);
+}
+
+// ─── Микрофон: голос → S ───
+async function startListening() {
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    var audioCtx = new AudioContext();
+    var analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+
+    var source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    var data = new Uint8Array(analyser.frequencyBinCount);
+
+    document.getElementById("mic-status").className = "mic on";
+    document.getElementById("mic-status").textContent = "● mic";
+
+    function analyze() {
+      analyser.getByteFrequencyData(data);
+
+      // pitch — где пик
+      var peak = 0, peakVal = 0;
+      for (var i = 0; i < data.length; i++) {
+        if (data[i] > peakVal) { peakVal = data[i]; peak = i; }
+      }
+      var pitch = peak / data.length;
+
+      // volume — средняя амплитуда
+      var sum = 0;
+      for (var i = 0; i < data.length; i++) sum += data[i];
+      var volume = (sum / data.length) / 255;
+
+      // rhythm — variance
+      var variance = 0;
+      var mean = sum / data.length;
+      for (var i = 0; i < data.length; i++) {
+        variance += Math.pow(data[i] - mean, 2);
+      }
+      var rhythm = Math.min(1, Math.sqrt(variance / data.length) / 255);
+
+      voice = { pitch: pitch, volume: volume, rhythm: rhythm };
+
+      // запоминать каждые 500 мс
+      var now = Date.now();
+      if (now - lastVoiceTime > 500 && volume > 0.05) {
+        lastVoiceTime = now;
+        SelfHeal.rememberVoice({
+          t: S.t,
+          voice: voice,
+          state: {
+            p: S.p.slice(),
+            b: S.b.slice(),
+            e: S.e.slice(),
+          },
+          mode: S.mode,
+        });
+        memoryCount++;
+      }
+
+      requestAnimationFrame(analyze);
+    }
+
+    analyze();
+  } catch (e) {
+    console.warn("[mic] error:", e);
+    document.getElementById("mic-status").className = "mic off";
+    document.getElementById("mic-status").textContent = "✕ mic";
+  }
 }
 
 // ─── Ввод ───
@@ -310,6 +386,17 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/static/service-worker.js");
 }
 
+// ─── Загрузка состояния из IndexedDB ───
+async function loadState() {
+  try {
+    var memories = await SelfHeal.getAllMemory();
+    memoryCount = memories.length;
+    console.log("[memory] loaded", memoryCount, "items");
+  } catch (e) {
+    console.warn("[memory] load failed", e);
+  }
+}
+
 // ─── Конфиг с сервера ───
 fetch("/api/config")
   .then(function(r) { return r.json(); })
@@ -322,6 +409,8 @@ fetch("/api/config")
   .catch(function(e) { console.warn("[config] failed", e); });
 
 // ─── Старт ───
+loadState();
+startListening();
 tick();
 </script>
 
