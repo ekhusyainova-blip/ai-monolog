@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>1 : 1 : 1</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a12;
+      color: #e0e0e0;
+      font-family: 'SF Mono', 'JetBrains Mono', monospace;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+    header {
+      text-align: center;
+      padding: 24px;
+      font-size: 24px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      color: #e0e0e0;
+      border-bottom: 1px solid #1f1f33;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 1px;
+      background: #1f1f33;
+    }
+    .panel {
+      background: #12121e;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .panel h3 {
+      font-size: 11px;
+      color: #8888aa;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 400;
+    }
+    .bars { display: flex; flex-direction: column; gap: 6px; }
+    .bar {
+      display: grid;
+      grid-template-columns: 80px 1fr 60px;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .bar .fill {
+      height: 4px;
+      background: #1f1f33;
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar .fill span {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      transition: width 0.1s linear;
+      border-radius: 2px;
+    }
+    .c-core   { background: #60a5fa; }
+    .c-method { background: #f472b6; }
+    .c-ethics { background: #4ade80; }
+    .c-fix    { background: #888; }
+    .c-range  { background: #60a5fa; }
+    .c-adapt  { background: #f59e0b; }
+    .c-sphere { background: #4ade80; }
+    .c-gest   { background: #f472b6; }
+    .c-marker { background: #888; }
+    footer {
+      padding: 12px 24px;
+      font-size: 11px;
+      color: #8888aa;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #1f1f33;
+    }
+    .alive { color: #4ade80; }
+    .dead  { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <header>1 : 1 : 1</header>
+
+  <main>
+    <div class="panel">
+      <h3>ядро</h3>
+      <div class="bars">
+        <div class="bar"><span>core</span><div class="fill"><span class="c-core" id="b-core"></span></div><span id="v-core">—</span></div>
+        <div class="bar"><span>method</span><div class="fill"><span class="c-method" id="b-method"></span></div><span id="v-method">—</span></div>
+        <div class="bar"><span>ethics</span><div class="fill"><span class="c-ethics" id="b-ethics"></span></div><span id="v-ethics">—</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>поведение</h3>
+      <div class="bars">
+        <div class="bar"><span>fix</span><div class="fill"><span class="c-fix" id="b-fix"></span></div><span id="v-fix">—</span></div>
+        <div class="bar"><span>range</span><div class="fill"><span class="c-range" id="b-range"></span></div><span id="v-range">—</span></div>
+        <div class="bar"><span>adaptive</span><div class="fill"><span class="c-adapt" id="b-adapt"></span></div><span id="v-adapt">—</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>выразительность</h3>
+      <div class="bars">
+        <div class="bar"><span>sphere</span><div class="fill"><span class="c-sphere" id="b-sphere"></span></div><span id="v-sphere">—</span></div>
+        <div class="bar"><span>gesture</span><div class="fill"><span class="c-gest" id="b-gest"></span></div><span id="v-gest">—</span></div>
+        <div class="bar"><span>marker</span><div class="fill"><span class="c-marker" id="b-marker"></span></div><span id="v-marker">—</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>состояние</h3>
+      <div class="bars">
+        <div class="bar"><span>t</span><span id="v-t">0</span></div>
+        <div class="bar"><span>alive</span><span id="v-alive" class="alive">●</span></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <span>ai-monolog v0.5.0</span>
+    <span id="status">○ подключение...</span>
+  </footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const setBar = (id, val, max) => {
+  $(`b-${id}`).style.width = `${Math.min(100, (val / max) * 100)}%`;
+  $(`v-${id}`).textContent = val.toFixed(3);
+};
+
+let ws;
+
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { $("status").textContent = "● активно"; $("status").style.color = "#4ade80"; };
+  ws.onclose = () => {
+    $("status").textContent = "○ отключено";
+    $("status").style.color = "#ef4444";
+    setTimeout(connect, 2000);
+  };
+  ws.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    const [c, m, et] = d.pillars;
+    const [f, r, a] = d.behavior;
+    const [s, g, mk] = d.expression;
+
+    setBar("core", c, 1); setBar("method", m, 1); setBar("ethics", et, 1);
+    setBar("fix", f, 16); setBar("range", r, 16); setBar("adapt", a, 16);
+    setBar("sphere", s, 12); setBar("gest", g, 12); setBar("marker", mk, 12);
+
+    $("v-t").textContent = d.t;
+    $("v-alive").textContent = d.alive ? "●" : "○";
+    $("v-alive").className = d.alive ? "alive" : "dead";
+  };
+}
+
+connect();
+</script>
+</body>
+</html>
