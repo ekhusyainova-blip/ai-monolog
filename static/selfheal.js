@@ -1,16 +1,20 @@
-// AI MONOLOG — SELFHEAL
-// Самоправка: память + IndexedDB + GitHub
+// AI MONOLOG — SELFHEAL + MEMORY
+// Три уровня: память + IndexedDB + GitHub
+// Плюс: память голоса
 
 const SelfHeal = (() => {
 
-  // ─── IndexedDB ───
+  // ─── IndexedDB: два хранилища ───
   function openDB() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open("monolog", 1);
+      const req = indexedDB.open("monolog", 2);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains("code")) {
           db.createObjectStore("code", { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("memory")) {
+          db.createObjectStore("memory", { autoIncrement: true });
         }
       };
       req.onsuccess = () => resolve(req.result);
@@ -18,6 +22,7 @@ const SelfHeal = (() => {
     });
   }
 
+  // ─── Код: сохранить/загрузить ───
   async function saveToIndexedDB(code) {
     try {
       const db = await openDB();
@@ -36,7 +41,8 @@ const SelfHeal = (() => {
       const tx = db.transaction("code", "readonly");
       const result = tx.objectStore("code").get("source");
       return new Promise((resolve) => {
-        result.onsuccess = () => resolve(result.result ? result.result.value : null);
+        result.onsuccess = () =>
+          resolve(result.result ? result.result.value : null);
         result.onerror = () => resolve(null);
       });
     } catch (e) {
@@ -44,10 +50,56 @@ const SelfHeal = (() => {
     }
   }
 
+  // ─── Память голоса ───
+  async function rememberVoice(item) {
+    try {
+      const db = await openDB();
+      const tx = db.transaction("memory", "readwrite");
+      tx.objectStore("memory").add(item);
+
+      // ограничение размера: 10000 записей
+      const store = tx.objectStore("memory");
+      const countReq = store.count();
+      countReq.onsuccess = () => {
+        if (countReq.result > 10000) {
+          const cursorReq = store.openCursor();
+          let toDelete = countReq.result - 10000;
+          cursorReq.onsuccess = (ev) => {
+            const cursor = ev.target.result;
+            if (cursor && toDelete > 0) {
+              cursor.delete();
+              toDelete--;
+              cursor.continue();
+            }
+          };
+        }
+      };
+      return true;
+    } catch (e) {
+      console.warn("[memory] save error:", e);
+      return false;
+    }
+  }
+
+  async function getAllMemory() {
+    try {
+      const db = await openDB();
+      const tx = db.transaction("memory", "readonly");
+      const result = tx.objectStore("memory").getAll();
+      return new Promise((resolve) => {
+        result.onsuccess = () => resolve(result.result || []);
+        result.onerror = () => resolve([]);
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
   // ─── GitHub API ───
   async function saveToGitHub(code, token, user, repo, path) {
     try {
-      const url = "https://api.github.com/repos/" + user + "/" + repo + "/contents/" + path;
+      const url = "https://api.github.com/repos/" + user + "/" +
+                  repo + "/contents/" + path;
       const current = await fetch(url, {
         headers: { "Authorization": "token " + token }
       }).then(r => r.json());
@@ -71,7 +123,7 @@ const SelfHeal = (() => {
     }
   }
 
-  // ─── Очередь для офлайна ───
+  // ─── Очередь офлайн ───
   async function queueForSync(code) {
     try {
       const db = await openDB();
@@ -86,7 +138,8 @@ const SelfHeal = (() => {
       const tx = db.transaction("code", "readonly");
       const result = tx.objectStore("code").get("queue");
       return new Promise((resolve) => {
-        result.onsuccess = () => resolve(result.result ? result.result.value : null);
+        result.onsuccess = () =>
+          resolve(result.result ? result.result.value : null);
         result.onerror = () => resolve(null);
       });
     } catch (e) {
@@ -142,33 +195,23 @@ const SelfHeal = (() => {
 
   // ─── Главная функция ───
   async function heal(error, currentCode, config) {
-    // 1. применить правку
     var fixed = applyFix(currentCode, error);
     if (!fixed) {
       console.warn("[selfheal] no fix for:", error);
       return null;
     }
 
-    // 2. сохранить в IndexedDB
     await saveToIndexedDB(fixed);
 
-    // 3. сохранить в GitHub (если есть сеть и токен)
     if (navigator.onLine && config.token) {
       var ok = await saveToGitHub(
-        fixed,
-        config.token,
-        config.user,
-        config.repo,
-        config.path
+        fixed, config.token, config.user, config.repo, config.path
       );
-      if (!ok) {
-        await queueForSync(fixed);
-      }
+      if (!ok) await queueForSync(fixed);
     } else {
       await queueForSync(fixed);
     }
 
-    // 4. перезагрузить
     console.log("[selfheal] reloading with fixed code");
     document.open();
     document.write(fixed);
@@ -188,9 +231,7 @@ const SelfHeal = (() => {
         window.__config.repo,
         window.__config.path
       );
-      if (ok) {
-        await clearQueue();
-      }
+      if (ok) await clearQueue();
     }
   });
 
@@ -198,6 +239,8 @@ const SelfHeal = (() => {
     heal: heal,
     loadFromIndexedDB: loadFromIndexedDB,
     saveToIndexedDB: saveToIndexedDB,
+    rememberVoice: rememberVoice,
+    getAllMemory: getAllMemory,
   };
 
 })();
