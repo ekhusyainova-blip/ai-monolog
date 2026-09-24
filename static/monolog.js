@@ -52,6 +52,11 @@ const Monolog = (() => {
     let mode = "alive";
     if (S.silence > 0.8) mode = "still";
     else if (S.silence > 0.5) mode = "silence";
+    
+    // если silence > 0.5, но пульс активен — уменьшить silence
+    if (pulse > 0.7 && S.silence > 0.5) {
+      S.silence *= 0.95;  // медленно выходит
+    }
 
     // РОЖДЕНИЕ
     if (!S.born && norm > 0.1) S.born = true;
