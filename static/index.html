@@ -37,6 +37,15 @@ header .mode.still { color: #ef4444; }
 header .mode.silence { color: #f59e0b; }
 header .mode.alive { color: #4ade80; }
 
+header .source {
+  position: absolute; left: 10px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px; color: #8888aa;
+}
+header .source.server { color: #4ade80; }
+header .source.local { color: #f59e0b; }
+header .source.offline { color: #ef4444; }
+
 main {
   flex: 1 1 auto; min-height: 0; overflow-y: auto;
   padding: 8px; display: flex; flex-direction: column; gap: 8px;
@@ -47,7 +56,6 @@ main {
   background: #12121e; border-radius: 6px;
   padding: 10px 12px; border: 1px solid #1f1f33;
   flex: 0 0 auto;
-  transition: opacity 0.5s ease;
 }
 .panel h3 {
   font-size: 10px; color: #8888aa;
@@ -55,7 +63,6 @@ main {
   font-weight: 400; margin-bottom: 8px;
 }
 
-/* ─── СФЕРА ─── */
 #sphere-container {
   display: flex; justify-content: center; align-items: center;
   padding: 20px; min-height: 160px;
@@ -69,7 +76,6 @@ main {
   will-change: transform, width, height, opacity;
 }
 
-/* ─── METRIKI ─── */
 .ascii {
   font-family: inherit; font-size: 11px; line-height: 1.6;
   white-space: pre;
@@ -88,8 +94,10 @@ main {
 
 footer {
   flex: 0 0 auto; border-top: 1px solid #1f1f33;
-  padding: 10px 12px 14px; display: flex; gap: 8px;
-  background: #0a0a12;
+  padding: 10px 12px 14px; background: #0a0a12;
+}
+.input-row {
+  display: flex; gap: 8px; align-items: center;
 }
 #input {
   flex: 1; background: #12121e;
@@ -100,25 +108,23 @@ footer {
 #input:focus { border-color: #60a5fa; }
 #input::placeholder { color: #444; }
 
-/* ─── БЕЗМОЛВИЕ ─── */
-body.still .panel { opacity: 0.25; }
-body.still #sphere { opacity: 0.1; }
-body.still header { opacity: 0.5; }
-
-/* ─── МЯГКОЕ МОЛЧАНИЕ ─── */
-body.silence .panel { opacity: 0.6; }
-
-/* ─── СЕЗОННЫЕ ОТТЕНКИ ─── */
-body.season-spring { --accent: #4ade80; }
-body.season-summer { --accent: #60a5fa; }
-body.season-autumn { --accent: #f59e0b; }
-body.season-winter { --accent: #8888aa; }
+.tools {
+  display: flex; gap: 6px; padding-top: 8px;
+}
+.tools button {
+  background: #12121e; color: #8888aa;
+  border: 1px solid #1f1f33; border-radius: 4px;
+  padding: 4px 8px; font-family: inherit; font-size: 10px;
+  cursor: pointer;
+}
+.tools button:active { background: #1f1f33; }
 </style>
 </head>
 <body>
 
 <header>
   1 : 1 : 1
+  <span class="source" id="source">— </span>
   <span class="mode" id="mode">● alive</span>
 </header>
 
@@ -127,7 +133,7 @@ body.season-winter { --accent: #8888aa; }
   <div class="panel">
     <h3>состояние</h3>
     <div id="sphere-container">
-      <div id="sphere"></div>
+      <div id="sphere"></divр>
     </div>
     <div class="row"><span class="lbl">режим</span><span class="val" id="v-mode">alive</span></div>
     <div class="row"><span class="lbl">t</span><span class="val" id="v-t">0</span></div>
@@ -152,9 +158,9 @@ body.season-winter { --accent: #8888aa; }
   </div>
 
   <div class="panel">
-    <h3>сезон</h3>
-    <div class="row"><span class="lbl">время года</span><span class="val" id="v-season">—</span></div>
-    <div class="row"><span class="lbl">церемония</span><span class="val" id="v-ceremony">—</span></div>
+    <h3>память</h3>
+    <div class="row"><span class="lbl">следов</span><span class="val" id="v-mem">0</span></div>
+    <div class="row"><span class="lbl">ождена</span><span class="val" id="v-born">нет</span></div>
   </div>
 
   <div class="panel">
@@ -165,7 +171,14 @@ body.season-winter { --accent: #8888aa; }
 </main>
 
 <footer>
-  <input id="input" placeholder="напиши сигнал..." autocomplete="off" autocorrect="off" autocapitalize="off">
+  <div class="input-row">
+    <input id="input" placeholder="напиши сигнал..." autocomplete="off" autocorrect="off" autocapitalize="off">
+  </div>
+  <div class="tools">
+    <button id="btn-export">экспорт</button>
+    <button id="btn-import">импорт</button>
+    <button id="btn-reset">сброс</button>
+  </div>
 </footer>
 
 <script src="/static/monolog.js"></script>
@@ -178,13 +191,17 @@ let messages = [];
 let human = new Array(8).fill(0);
 let lastHumanTime = 0;
 let pulsePhase = 0;
+let source = "local";  // server | local | offline
+let ws = null;
+let serverState = null;
+let lastServerUpdate = 0;
 
 // ─── Восстановление ───
 try {
   const saved = localStorage.getItem("monolog_state");
   if (saved) {
     const data = JSON.parse(saved);
-    S = data.S;
+    S = data.S || Monolog.create();
     messages = data.messages || [];
   }
 } catch(e) {}
@@ -195,6 +212,57 @@ function save() {
   } catch(e) {}
 }
 
+// ─── WebSocket ───
+function connect() {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const host = location.host;
+
+  try {
+    ws = new WebSocket(`${proto}//${host}/ws`);
+  } catch(e) {
+    setSource("offline");
+    return;
+  }
+
+  ws.onopen = () => {
+    setSource("server");
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      // сервер прислал снимок
+      serverState = d;
+      lastServerUpdate = Date.now();
+      source = "server";
+    } catch(err) {}
+  };
+
+  ws.onclose = () => {
+    setSource("local");
+    setTimeout(connect, 5000);
+  };
+
+  ws.onerror = () => {
+    setSource("local");
+  };
+}
+
+function setSource(s) {
+  source = s;
+  const el = $("source");
+  if (s === "server") {
+    el.textContent = "● сервер";
+    el.className = "source server";
+  } else if (s === "local") {
+    el.textContent = "○ локально";
+    el.className = "source local";
+  } else {
+    el.textContent = "✕ офлайн";
+    el.className = "source offline";
+  }
+}
+
 // ─── Утилиты ───
 function bar(val, max, width) {
   const filled = Math.round((val / max) * width);
@@ -202,7 +270,6 @@ function bar(val, max, width) {
          "░".repeat(Math.max(0, width - filled));
 }
 
-// ─── Рендер орбиты ───
 function renderOrbit(p) {
   const std = Math.sqrt(
     (Math.pow(p[0]-p[1],2)+Math.pow(p[1]-p[2],2)+Math.pow(p[2]-p[0],2))/3
@@ -216,74 +283,70 @@ function renderOrbit(p) {
          "  " + state;
 }
 
-// ─── Рендер поведения ───
 function renderBehavior(b) {
   return "  fix      " + bar(b[0], 16, 14) + "  " + b[0].toFixed(2) + "\n" +
          "  range    " + bar(b[1], 16, 14) + "  " + b[1].toFixed(2) + "\n" +
          "  adaptive " + bar(b[2], 16, 14) + "  " + b[2].toFixed(2);
 }
 
-// ─── Рендер выражения ───
 function renderExpression(e) {
   return "  sphere   " + bar(e[0], 12, 14) + "  " + e[0].toFixed(2) + "\n" +
          "  gesture  " + bar(e[1], 12, 14) + "  " + e[1].toFixed(2) + "\n" +
          "  marker   " + bar(e[2], 12, 14) + "  " + e[2].toFixed(2);
 }
 
-// ─── Рендер сезона ───
-function renderSeason(t) {
-  const seasons = [
-    ["весна", 300], ["лето", 400], ["осень", 300], ["зима", 200]
-  ];
-  const total = 700;
-  const ct = t % 1000;
-  let acc = 0;
-  for (const [name, dur] of seasons) {
-    if (acc <= ct && ct < acc + dur) {
-      const progress = (ct - acc) / dur;
-      return { name, progress };
-    }
-    acc += dur;
-  }
-  return { name: "—", progress: 0 };
-}
-
 // ─── Главный рендер ───
 function render() {
-  // орбита
-  $("orbit").textContent = renderOrbit(S.p);
-  $("behavior").textContent = renderBehavior(S.b);
-  $("expression").textContent = renderExpression(S.e);
+  // данные из источника
+  let state;
+  if (source === "server" && serverState) {
+    state = {
+      t: serverState.t,
+      mode: serverState.mode,
+      p: serverState.pillars,
+      b: serverState.behavior,
+      e: serverState.expression,
+      silence: serverState.silence_level,
+      born: serverState.born,
+      mem: serverState.memory_traces,
+    };
+  } else {
+    state = {
+      t: S.t,
+      mode: S.mode || "alive",
+      p: S.p,
+      b: S.b,
+      e: S.e,
+      silence: S.silence,
+      born: S.born,
+      mem: S.mem.length,
+    };
+  }
 
-  // состояния
-  $("v-t").textContent = S.t;
-  $("v-sil").textContent = S.silence.toFixed(3);
-  $("v-mode").textContent = S.mode || "alive";
+  $("orbit").textContent = renderOrbit(state.p);
+  $("behavior").textContent = renderBehavior(state.b);
+  $("expression").textContent = renderExpression(state.e);
+
+  $("v-t").textContent = state.t;
+  $("v-sil").textContent = state.silence.toFixed(3);
+  $("v-mode").textContent = state.mode;
+  $("v-born").textContent = state.born ? "да" : "нет";
+  $("v-mem").textContent = state.mem;
 
   const humanNorm = Math.sqrt(human.reduce((s, x) => s + x*x, 0));
   $("v-human").textContent = humanNorm.toFixed(2);
 
-  // пульс (анимация)
+  // пульс
   pulsePhase += 0.08;
   const pulse = Math.sin(pulsePhase);
   $("v-pulse").textContent = pulse.toFixed(2);
 
-  // сезон
-  const season = renderSeason(S.t);
-  $("v-season").textContent = season.name;
-  const ceremony = (S.t % 50 === 0) ? "полдень" :
-                   (S.t % 20 === 0) ? "рассвет" :
-                   (S.t % 100 === 0) ? "закат" : "—";
-  $("v-ceremony").textContent = ceremony;
-
-  // ─── СФЕРА ДЫШИТ ───
+  // сфера
   const sphere = $("sphere");
-  const baseSize = 100;
-  const pulseSize = 20 * pulse;
-  const silenceFactor = (1 - S.silence);
-  const size = baseSize + pulseSize + silenceFactor * 60;
+  const silenceFactor = (1 - state.silence);
+  const size = 100 + 20 * pulse + silenceFactor * 60;
   const opacity = 0.3 + silenceFactor * 0.7;
-  const hue = 210 + S.b[2] * 10;
+  const hue = 210 + (state.b[2] || 4) * 10;
   sphere.style.width = size + "px";
   sphere.style.height = size + "px";
   sphere.style.opacity = opacity;
@@ -293,16 +356,15 @@ function render() {
     "0 0 " + (30 + silenceFactor * 40) + "px hsla(" + hue + ", 80%, 65%, " +
     (0.2 + silenceFactor * 0.4) + ")";
 
-  // режим
+  // режим — Monolog решает!
   const mode = $("mode");
-  document.body.classList.remove("still", "silence",
-    "season-spring", "season-summer", "season-autumn", "season-winter");
+  document.body.classList.remove("still", "silence");
 
-  if (S.mode === "still") {
+  if (state.mode === "still") {
     mode.textContent = "∅ безмолвие";
     mode.className = "mode still";
     document.body.classList.add("still");
-  } else if (S.mode === "silence") {
+  } else if (state.mode === "silence") {
     mode.textContent = "○ молчание";
     mode.className = "mode silence";
     document.body.classList.add("silence");
@@ -310,12 +372,6 @@ function render() {
     mode.textContent = "● alive";
     mode.className = "mode alive";
   }
-
-  // сезонный класс
-  document.body.classList.add("season-" +
-    (season.name === "весна" ? "spring" :
-     season.name === "лето" ? "summer" :
-     season.name === "осень" ? "autumn" : "winter"));
 
   // лог
   const log = $("log");
@@ -330,20 +386,32 @@ function render() {
 // ─── Цикл ───
 function tick() {
   const now = Date.now();
+
+  // затухание сигнала
   if (now - lastHumanTime > 1000) {
     human = human.map(x => x * 0.95);
   }
 
-  const result = Monolog.step(S, human);
-  S.mode = result.mode;
+  // отправка сигнала на сервер
+  if (source === "server" && ws && ws.readyState === 1) {
+    const humanNorm = Math.sqrt(human.reduce((s, x) => s + x*x, 0));
+    if (humanNorm > 0.05) {
+      ws.send(JSON.stringify({ type: "signal", values: human }));
+    }
+  }
 
-  if (result.response && (now - lastHumanTime) < 500) {
-    messages.push({ t: S.t, text: result.response });
-    if (messages.length > 30) messages.shift();
+  // локальный тик (если нет сервера)
+  if (source !== "server") {
+    const result = Monolog.step(S, human);
+    S.mode = result.mode;
+    if (result.response && (now - lastHumanTime) < 500) {
+      messages.push({ t: S.t, text: result.response });
+      if (messages.length > 30) messages.shift();
+    }
   }
 
   render();
-  if (S.t % 100 === 0) save();
+  if ((S.t || 0) % 100 === 0) save();
   setTimeout(tick, 50);
 }
 
@@ -371,12 +439,58 @@ function hashToVector(text) {
   return v;
 }
 
+// ─── Экспорт / Импорт ───
+$("btn-export").addEventListener("click", () => {
+  const data = JSON.stringify({ S, messages }, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "monolog-backup-" + Date.now() + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+$("btn-import").addEventListener("click", () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.S) S = data.S;
+        if (data.messages) messages = data.messages;
+        save();
+        render();
+        alert("импорт ок");
+      } catch(err) {
+        alert("ошибка импорта");
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+});
+
+$("btn-reset").addEventListener("click", () => {
+  if (confirm("Сбросить Monolog?")) {
+    S = Monolog.create();
+    messages = [];
+    save();
+    render();
+  }
+});
+
 // ─── Service Worker ───
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/static/service-worker.js");
 }
 
 // ─── Старт ───
+connect();
 tick();
 </script>
 </body>
