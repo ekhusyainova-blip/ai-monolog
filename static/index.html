@@ -468,6 +468,8 @@ setTimeout(function() {
     report.push("S.p: " + JSON.stringify(S.p));
   }
   report.push("messages: " + (typeof messages));
+  report.push("tick вызван: " + window.__tickCalled);
+  report.push("tick упал: " + window.__tickError);
   
   var panel = document.createElement("div");
   panel.style.cssText = 
@@ -479,6 +481,22 @@ setTimeout(function() {
   panel.textContent = report.join("\n");
   document.body.appendChild(panel);
 }, 2000);
+
+window.__tickCalled = 0;
+window.__tickError = null;
+
+// оберни tick
+var _originalTick = tick;
+tick = function() {
+  window.__tickCalled++;
+  try {
+    _originalTick();
+  } catch(e) {
+    window.__tickError = e.message;
+    console.error("tick error:", e);
+  }
+};
+
 </script>
 </body>
 </html>
