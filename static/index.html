@@ -59,8 +59,7 @@ main {
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, #60a5fa, #0a0a12);
   box-shadow: 0 0 40px rgba(96, 165, 250, 0.3);
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform, width, height, opacity;
+  transition: opacity 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
 }
 .ascii {
   font-family: inherit; font-size: 11px; line-height: 1.6;
@@ -146,15 +145,25 @@ body.silence .panel { opacity: 0.6; }
 </footer>
 
 <script src="/static/monolog.js"></script>
+<script src="/static/selfheal.js"></script>
 <script>
-var $ = function(id) { return document.getElementById(id); };
+// ─── КОНФИГ ───
+window.__config = {
+  token: null,           // получим с сервера
+  user: "ТВОЙ_ЛОГИН",    // ЗАМЕНИ на свой логин GitHub
+  repo: "ai-monolog",    // имя репо
+  path: "static/index.html"
+};
 
+// ─── Состояние ───
 var S = Monolog.create();
 var messages = [];
 var human = [0,0,0,0,0,0,0,0];
 var lastHumanTime = 0;
 var pulsePhase = 0;
 var pulse = 0;
+
+function $(id) { return document.getElementById(id); }
 
 function bar(val, max, width) {
   var filled = Math.round((val / max) * width);
@@ -201,7 +210,9 @@ function render() {
   var humanNorm = Math.sqrt(human.reduce(function(s, x) { return s + x*x; }, 0));
   $("v-human").textContent = humanNorm.toFixed(2);
 
-  pulsePhase += 0.08;
+  // ─── АДАПТИВНЫЙ ПУЛЬС ───
+  var rate = 0.05 * (1 - S.silence) + 0.005 * S.b[2];
+  pulsePhase += rate;
   pulse = Math.sin(pulsePhase);
   $("v-pulse").textContent = pulse.toFixed(2);
 
@@ -210,6 +221,7 @@ function render() {
   var size = 100 + 20 * pulse + silenceFactor * 60;
   var opacity = 0.3 + silenceFactor * 0.7;
   var hue = 210 + S.b[2] * 10;
+
   sphere.style.width = Math.round(size) + "px";
   sphere.style.height = Math.round(size) + "px";
   sphere.style.opacity = opacity.toFixed(2);
@@ -244,23 +256,32 @@ function render() {
 }
 
 function tick() {
-  var now = Date.now();
-  if (now - lastHumanTime > 1000) {
-    human = human.map(function(x) { return x * 0.95; });
+  try {
+    var now = Date.now();
+    if (now - lastHumanTime > 1000) {
+      human = human.map(function(x) { return x * 0.95; });
+    }
+
+    var result = Monolog.step(S, human);
+    S.mode = result.mode;
+
+    if (result.response && (now - lastHumanTime) < 500) {
+      messages.push({ t: S.t, text: result.response });
+      if (messages.length > 30) messages.shift();
+    }
+
+    render();
+  } catch (e) {
+    console.error("[tick error]", e);
+    // SELFHEAL — попытка исправить себя
+    var currentCode = document.documentElement.outerHTML;
+    SelfHeal.heal(e.message, currentCode, window.__config);
+    return;
   }
-
-  var result = Monolog.step(S, human);
-  S.mode = result.mode;
-
-  if (result.response && (now - lastHumanTime) < 500) {
-    messages.push({ t: S.t, text: result.response });
-    if (messages.length > 30) messages.shift();
-  }
-
-  render();
   setTimeout(tick, 50);
 }
 
+// ─── Ввод ───
 var inputTimer = null;
 $("input").addEventListener("input", function(e) {
   clearTimeout(inputTimer);
@@ -284,67 +305,24 @@ function hashToVector(text) {
   return v;
 }
 
+// ─── Service Worker ───
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/static/service-worker.js");
 }
 
+// ─── Конфиг с сервера ───
+fetch("/api/config")
+  .then(function(r) { return r.json(); })
+  .then(function(cfg) {
+    if (cfg.token) window.__config.token = cfg.token;
+    if (cfg.user) window.__config.user = cfg.user;
+    if (cfg.repo) window.__config.repo = cfg.repo;
+    console.log("[config] loaded");
+  })
+  .catch(function(e) { console.warn("[config] failed", e); });
+
+// ─── Старт ───
 tick();
-</script>
-
-<script>
-// WATCHDOG — следит за системой
-(function() {
-  var CHECK_INTERVAL = 5000;
-  var lastT = -1;
-  var stuckCount = 0;
-  var errors = [];
-
-  function check() {
-    if (typeof Monolog === "undefined") {
-      logError("Monolog не загружен");
-      return;
-    }
-    if (typeof S === "undefined" || !S) {
-      logError("S отсутствует");
-      return;
-    }
-    if (S.t === lastT) {
-      stuckCount++;
-      if (stuckCount >= 3) {
-        logError("t застыл на " + S.t);
-        stuckCount = 0;
-      }
-    } else {
-      stuckCount = 0;
-    }
-    lastT = S.t;
-  }
-
-  function logError(msg) {
-    var time = new Date().toLocaleTimeString();
-    errors.push(time + " — " + msg);
-    console.warn("[watchdog]", msg);
-    showErrors();
-  }
-
-  function showErrors() {
-    var panel = document.getElementById("watchdog-errors");
-    if (!panel) {
-      panel = document.createElement("div");
-      panel.id = "watchdog-errors";
-      panel.style.cssText =
-        "position: fixed; bottom: 80px; left: 8px; right: 8px; " +
-        "background: #1a1a2e; border: 1px solid #ef4444; " +
-        "border-radius: 6px; padding: 8px; font-size: 10px; " +
-        "color: #ef4444; max-height: 120px; overflow-y: auto; " +
-        "z-index: 100;";
-      document.body.appendChild(panel);
-    }
-    panel.textContent = errors.slice(-5).join("\n");
-  }
-
-  setInterval(check, CHECK_INTERVAL);
-})();
 </script>
 
 </body>
