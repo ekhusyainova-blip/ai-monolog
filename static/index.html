@@ -269,7 +269,14 @@ function tick() {
     if (now - lastHumanTime > 1000) {
       human = human.map(function(x) { return x * 0.95; });
     }
+// в tick() перед Monolog.step(S, human):
 
+// объединить human и voice
+      var combined = human.map(function(x, i) {
+      return x + (i < 3 ? voice.pitch + voice.volume + voice.rhythm : 0) * 0.1;
+      });
+
+    var result = Monolog.step(S, combined);
     var result = Monolog.step(S, human);
     S.mode = result.mode;
 
