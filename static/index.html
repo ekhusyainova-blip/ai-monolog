@@ -192,7 +192,9 @@ function connect() {
     var d = JSON.parse(e.data);
 
     $("orbit").textContent = renderOrbit(d.pillars);
-    $("memory").textContent = renderMemory(d.memory_traces || []);
+    $("memory").textContent = 
+      "  следов    " + (d.memory_traces || 0) + "\n" +
+      "  лимит     1000";
 
     $("v-t").textContent = d.t;
     $("v-born").textContent = d.born ? "да" : "нет";
