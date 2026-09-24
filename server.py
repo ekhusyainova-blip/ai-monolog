@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
+# ВАЖНО: monolog.py в корне
 from monolog import monolog
 
 app = FastAPI(title="AI Monolog")
@@ -30,8 +31,6 @@ class System:
 
     def step(self):
         result = monolog(self.S, self.human, self.t)
-
-        # пересобираем состояние
         self.S = {
             "p": result["p"], "b": result["b"], "e": result["e"],
             "mem": result["mem"], "silence": result["silence"],
@@ -50,14 +49,14 @@ class System:
         r = self.step()
         return {
             "t": r["t"],
-            "born": r["born"],
+            "born": bool(r["born"]),
             "mode": r["mode"],
-            "silence_level": r["silence"],
+            "silence_level": float(r["silence"]),
             "human_norm": float(np.linalg.norm(self.human)),
             "pillars": r["p"].tolist(),
             "behavior": r["b"].tolist(),
             "expression": r["e"].tolist(),
-            "memory_traces": r["mem"][-100:],
+            "memory_traces": len(r["mem"]),
             "messages": self.messages[-5:],
         }
 
