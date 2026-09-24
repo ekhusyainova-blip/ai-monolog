@@ -6,3 +6,8 @@
   </text>
   <circle cx="256" cy="380" r="20" fill="#4ade80"/>
 </svg>
+# конвертировать SVG в PNG
+# pip install cairosvg
+import cairosvg
+cairosvg.svg2png(url="static/icon.svg", write_to="static/icon-192.png", output_width=192)
+cairosvg.svg2png(url="static/icon.svg", write_to="static/icon-512.png", output_width=512)
