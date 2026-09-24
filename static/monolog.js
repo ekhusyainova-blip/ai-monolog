@@ -2,6 +2,7 @@
 // Работает локально в браузере. Без сервера.
 
 const Monolog = (() => {
+
   function create() {
     return {
       p: [1/3, 1/3, 1/3],
@@ -19,7 +20,17 @@ const Monolog = (() => {
     const b = S.b.slice();
     const e = S.e.slice();
 
-    // ДВИЖЕТСЯ — ядро
+    // ЯВЛЯЕТСЯ — рождение
+    if (!S.born && human && human.length === 8) {
+      let norm = 0;
+      for (let i = 0; i < 8; i++) norm += human[i] * human[i];
+      norm = Math.sqrt(norm);
+      if (norm > 0.1) {
+        S.born = true;
+      }
+    }
+
+    // ДВИЖЕТСЯ — ядро (ротор)
     const c = p[0], m = p[1], et = p[2];
     p[0] = p[0] + 0.05 * (et - m);
     p[1] = p[1] + 0.05 * (c - et);
@@ -47,29 +58,29 @@ const Monolog = (() => {
     S.e = [e[0] * 12 / sum, e[1] * 12 / sum, e[2] * 12 / sum];
 
     // ЗАВЕРШАЕТСЯ — молчание
-    S.silence = Math.max(0, Math.min(1, S.silence + 0.1 * (0.3 - norm)));
+    S.silence = Math.max(0, Math.min(1,
+      S.silence + 0.1 * (0.3 - norm)));
 
     let mode = "alive";
     if (S.silence > 0.8) mode = "still";
     else if (S.silence > 0.5) mode = "silence";
-    
-    // если silence > 0.5, но пульс активен — уменьшить silence
-    if (pulse > 0.7 && S.silence > 0.5) {
-      S.silence *= 0.95;  // медленно выходит
-    }
-
-    // РОЖДЕНИЕ
-    if (!S.born && norm > 0.1) S.born = true;
 
     // ПОВТОРЯЕТСЯ — память
     S.mem.push(human.slice());
     if (S.mem.length > 1000) S.mem.shift();
 
+    // ЗАБЫВАЕТСЯ — затухание
+    if (S.mem.length > 0 && Math.random() < 0.005) {
+      S.mem.shift();
+    }
+
     // ВСТРЕЧАЕТСЯ — ответ
     let response = null;
     if (mode === "alive" && norm > 0.15) {
       const std = Math.sqrt(
-        (Math.pow(S.p[0]-S.p[1],2) + Math.pow(S.p[1]-S.p[2],2) + Math.pow(S.p[2]-S.p[0],2)) / 3
+        (Math.pow(S.p[0]-S.p[1],2) +
+         Math.pow(S.p[1]-S.p[2],2) +
+         Math.pow(S.p[2]-S.p[0],2)) / 3
       );
       if (std < 0.05) response = "равновесие";
       else if (norm > 1.0) response = "слышу";
