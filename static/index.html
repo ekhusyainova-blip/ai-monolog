@@ -142,7 +142,8 @@ const setBar = (id, val, max) => {
 let ws;
 
 function connect() {
-  ws = new WebSocket(`ws://${location.host}/ws`);
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(`${proto}//${location.host}/ws`);
   ws.onopen = () => { $("status").textContent = "● активно"; $("status").style.color = "#4ade80"; };
   ws.onclose = () => {
     $("status").textContent = "○ отключено";
