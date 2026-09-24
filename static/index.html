@@ -333,5 +333,118 @@ if ("serviceWorker" in navigator) {
 
 tick();
 </script>
+
+<script>
+// ─────────────────────────────────────────────
+// WATCHDOG — следит за системой
+// ─────────────────────────────────────────────
+(function() {
+  const CHECK_INTERVAL = 5000;  // 5 секунд
+  
+  let lastT = -1;
+  let lastPulse = 0;
+  let stuckCount = 0;
+  let errors = [];
+  
+  function check() {
+    // 1. Monolog загружен?
+    if (typeof Monolog === "undefined") {
+      logError("Monolog не загружен");
+      reloadMonolog();
+      return;
+    }
+    
+    // 2. S существует?
+    if (typeof S === "undefined" || !S) {
+      logError("S отсутствует");
+      autoRestart();
+      return;
+    }
+    
+    // 3. t растёт?
+    if (S.t === lastT) {
+      stuckCount++;
+      if (stuckCount >= 3) {
+        logError("t застыл на " + S.t);
+        autoRestart();
+        stuckCount = 0;
+      }
+    } else {
+      stuckCount = 0;
+    }
+    
+    // 4. pulse меняется?
+    const pulseEl = document.getElementById("v-pulse");
+    if (pulseEl) {
+      const pulse = parseFloat(pulseEl.textContent) || 0;
+      if (Math.abs(pulse - lastPulse) < 0.001) {
+        logError("pulse застыл");
+      }
+      lastPulse = pulse;
+    }
+    
+    // 5. панели заполнены?
+    const orbit = document.getElementById("orbit");
+    if (orbit && orbit.textContent.trim() === "") {
+      logError("ядро пустое");
+    }
+    
+    lastT = S.t;
+  }
+  
+  function logError(msg) {
+    const time = new Date().toLocaleTimeString();
+    errors.push(time + " — " + msg);
+    console.warn("[watchdog]", msg);
+    showErrors();
+  }
+  
+  function showErrors() {
+    let panel = document.getElementById("watchdog-errors");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "watchdog-errors";
+      panel.style.cssText = 
+        "position: fixed; bottom: 80px; left: 8px; right: 8px; " +
+        "background: #1a1a2e; border: 1px solid #ef4444; " +
+        "border-radius: 6px; padding: 8px; font-size: 10px; " +
+        "color: #ef4444; max-height: 120px; overflow-y: auto; " +
+        "z-index: 100;";
+      document.body.appendChild(panel);
+    }
+    panel.textContent = errors.slice(-5).join("\n");
+  }
+  
+  function autoRestart() {
+    console.log("[watchdog] перезапуск");
+    try {
+      S = Monolog.create();
+      messages = [];
+      if (typeof tick === "function") {
+        tick();
+      }
+    } catch(e) {
+      console.error("[watchdog] ошибка перезапуска:", e);
+    }
+  }
+  
+  function reloadMonolog() {
+    console.log("[watchdog] перезагрузка monolog.js");
+    const script = document.createElement("script");
+    script.src = "/static/monolog.js?v=" + Date.now();
+    script.onload = function() {
+      if (typeof Monolog !== "undefined") {
+        autoRestart();
+      }
+    };
+    document.head.appendChild(script);
+  }
+  
+  // Запускаем проверку
+  setInterval(check, CHECK_INTERVAL);
+  console.log("[watchdog] запущен. проверка каждые 5 сек");
+})();
+</script>
+
 </body>
 </html>
