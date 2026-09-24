@@ -1,4 +1,4 @@
-"""AI Monolog — сервер."""
+"""AI Monolog — сервер 24/7."""
 import asyncio, json, os, time
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -7,7 +7,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-# ВАЖНО: monolog.py в корне
 from monolog import monolog
 
 app = FastAPI(title="AI Monolog")
@@ -24,6 +23,7 @@ class System:
         self.last_human = 0.0
         self.messages = []
         self.t = 0
+        self.tick_task = None
 
     def receive(self, values):
         self.human = np.array(values[:8])
@@ -64,6 +64,22 @@ class System:
 STATE = System()
 
 
+# ─── Автономный тик 24/7 ───
+async def background_tick():
+    """Monolog живёт, даже когда никто не смотрит."""
+    while True:
+        try:
+            STATE.step()
+        except Exception as e:
+            print(f"[tick error] {e}")
+        await asyncio.sleep(0.5)  # 2 шага в секунду
+
+
+@app.on_event("startup")
+async def startup():
+    asyncio.create_task(background_tick())
+
+
 @app.get("/")
 async def index():
     with open("static/index.html") as f:
@@ -73,6 +89,12 @@ async def index():
 @app.get("/api/state")
 async def get_state():
     return STATE.snapshot()
+
+
+@app.get("/api/ping")
+async def ping():
+    """Пинг для cron — не даёт Render заснуть."""
+    return {"status": "alive", "t": STATE.t}
 
 
 @app.websocket("/ws")
