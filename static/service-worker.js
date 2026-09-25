@@ -1,4 +1,4 @@
-const CACHE = "monolog-v3";
+const CACHE = "monolog-v4";
 const FILES = [
   "/",
   "/static/index.html",
@@ -7,23 +7,18 @@ const FILES = [
   "/static/speak.js",
   "/static/dev.js",
   "/static/manifest.json",
-  "/static/icon-192.png",
-  "/static/icon-512.png",
 ];
 
-// установка — кэшируем всё что есть
+// install — кэшируем что можем, не падаем если чего-то нет
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((cache) => {
-      // по одному — чтобы один недоступный файл не ломал всё
-      return Promise.all(
-        FILES.map(f => cache.add(f).catch(() => null))
-      );
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE).then((cache) =>
+      Promise.all(FILES.map(f => cache.add(f).catch(() => null)))
+    ).then(() => self.skipWaiting())
   );
 });
 
-// активация — чистим старые кэши
+// activate — чистим старые кэши
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -32,12 +27,11 @@ self.addEventListener("activate", (e) => {
   );
 });
 
-// fetch — отдаём из кэша, иначе пробуем сеть, иначе fallback
+// fetch — кэш сначала, сеть потом, fallback в конце
 self.addEventListener("fetch", (e) => {
-  // только GET
   if (e.request.method !== "GET") return;
 
-  // api/config — всегда сеть сначала
+  // /api/ — всегда сеть, при офлайне отдаём пустое
   if (e.request.url.includes("/api/")) {
     e.respondWith(
       fetch(e.request).catch(() => new Response("{}", {
@@ -47,21 +41,17 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // всё остальное — кэш сначала
+  // остальное — кэш → сеть → fallback
   e.respondWith(
-    caches.match(e.request).then((r) => {
-      if (r) return r;
+    caches.match(e.request).then((cached) => {
+      if (cached) return cached;
       return fetch(e.request).then((res) => {
-        // кэшируем на лету
         if (res.ok) {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
-      }).catch(() => {
-        // офлайн fallback — index.html
-        return caches.match("/static/index.html");
-      });
+      }).catch(() => caches.match("/static/index.html"));
     })
   );
 });
