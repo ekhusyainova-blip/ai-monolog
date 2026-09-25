@@ -1,5 +1,6 @@
 <script src="/static/monolog.js"></script>
 <script src="/static/selfheal.js"></script>
+<script src="/static/speak.js"></script>
 <script>
 // ─── КОНФИГ ───
 window.__config = {
@@ -129,11 +130,14 @@ function tick() {
     var result = Monolog.step(S, combined);
     S.mode = result.mode;
 
-    if (result.response && (now - lastHumanTime) < 500) {
-      messages.push({ t: S.t, text: result.response });
-      if (messages.length > 30) messages.shift();
-    }
 
+    if ((now - lastHumanTime) < 500 && Math.random() < 0.3) {
+      var text = Speak.generateText(S);
+      messages.push({ t: S.t, text: text });
+      Speak.speak(text, S);
+    }
+    
+    
     render();
 
     // расширение границ — по состоянию
