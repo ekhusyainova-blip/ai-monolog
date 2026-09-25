@@ -1,8 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>1 : 1 : 1</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0a0a12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #0a0a12; overflow: hidden; }
+body {
+  color: #e0e0e0;
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  font-size: 12px;
+  height: 100dvh;
+  position: relative;
+}
+
+/* сфера — весь экран */
+#sphere {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #60a5fa, #0a0a12);
+  box-shadow: 0 0 60px rgba(96, 165, 250, 0.3);
+  transition: opacity 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+  z-index: 1;
+}
+
+/* ответы — поверх сферы */
+#answer {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  text-align: center;
+  font-size: 16px;
+  color: #e0e0e0;
+  text-shadow: 0 0 10px #0a0a12, 0 0 20px #0a0a12;
+  z-index: 3;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+
+/* пропорция — снизу */
+#proportion {
+  position: absolute;
+  bottom: 80px; left: 0; right: 0;
+  text-align: center;
+  font-size: 14px;
+  color: #8888aa;
+  letter-spacing: 2px;
+  z-index: 3;
+}
+
+/* статус — сверху */
+#status-bar {
+  position: absolute;
+  top: 20px; left: 20px; right: 20px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #8888aa;
+  z-index: 3;
+}
+#status-bar .mic.on { color: #4ade80; }
+#status-bar .mic.off { color: #ef4444; }
+#status-bar .mode.still { color: #ef4444; }
+#status-bar .mode.silence { color: #f59e0b; }
+#status-bar .mode.alive { color: #4ade80; }
+
+/* ввод — снизу */
+#input {
+  position: absolute;
+  bottom: 20px; left: 20px; right: 20px;
+  background: rgba(18,18,30,0.8);
+  border: 1px solid #1f1f33;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+  z-index: 4;
+  backdrop-filter: blur(10px);
+}
+#input:focus { border-color: #60a5fa; }
+#input::placeholder { color: #444; }
+
+/* режим безмолвия */
+body.still #sphere { opacity: 0.08; }
+body.still #answer, body.still #proportion { opacity: 0.15; }
+body.still #input { opacity: 0.3; }
+body.silence #sphere { opacity: 0.4; }
+body.silence #answer { opacity: 0.3; }
+</style>
+</head>
+<body>
+
+<div id="sphere"></div>
+<div id="answer"></div>
+<div id="proportion">— : — : —</div>
+
+<div id="status-bar">
+  <span class="mic off" id="mic-status">● mic</span>
+  <span class="mode alive" id="mode">● alive</span>
+</div>
+
+<input id="input" placeholder="напиши сигнал..." autocomplete="off" autocorrect="off" autocapitalize="off">
+
 <script src="/static/monolog.js"></script>
 <script src="/static/selfheal.js"></script>
 <script src="/static/speak.js"></script>
 <script>
-// ─── КОНФИГ ───
+// КОНФИГ
 window.__config = {
   token: null,
   user: "ТВОЙ_ЛОГИН",
@@ -10,7 +126,7 @@ window.__config = {
   path: "static/index.html"
 };
 
-// ─── состояние ───
+// состояние
 var S = Monolog.create();
 var messages = [];
 var human = [0,0,0,0,0,0,0,0];
@@ -20,69 +136,24 @@ var lastVoiceTime = 0;
 var pulse = 0;
 var pulsePhase = 0;
 var memoryCount = 0;
-<div class="row"><span class="lbl">желаемая</span><span class="val" id="v-desired">—</span></div>
+var user = {
+  id: "local",
+  history: [],
+  p_desired: null,
+  partner: null,
+};
 
 function $(id) { return document.getElementById(id); }
 
-function bar(v, max, w) {
-  var f = Math.max(0, Math.min(w, Math.round(v / max * w)));
-  return "▓".repeat(f) + "░".repeat(w - f);
-}
-
-// ─── показ желаемой пропорции (3 числа) ───
-function showDesired(S) {
-  // p_desired — сама p. без цели.
-  return S.p.map(x => x.toFixed(2)).join(" : ");
-}
-
 function render() {
-  var std = Math.sqrt(
-    (Math.pow(S.p[0]-S.p[1],2) + Math.pow(S.p[1]-S.p[2],2) +
-     Math.pow(S.p[2]-S.p[0],2)) / 3
-  );
-  var state = std < 0.05 ? "● равновесие" :
-              std < 0.15 ? "◐ дыхание" : "○ дрейф";
+  // пропорция — 3 числа
+  var pd = user.p_desired || S.p;
+  $("proportion").textContent = pd.map(x => x.toFixed(2)).join(" : ");
 
-  $("orbit").textContent =
-    "  core    " + bar(S.p[0], 1, 14) + "  " + S.p[0].toFixed(3) + "\n" +
-    "  method  " + bar(S.p[1], 1, 14) + "  " + S.p[1].toFixed(3) + "\n" +
-    "  ethics  " + bar(S.p[2], 1, 14) + "  " + S.p[2].toFixed(3) + "\n\n" +
-    "  " + state;
-
-  $("behavior").textContent =
-    "  fix      " + bar(S.b[0], 16, 14) + "  " + S.b[0].toFixed(2) + "\n" +
-    "  range    " + bar(S.b[1], 16, 14) + "  " + S.b[1].toFixed(2) + "\n" +
-    "  adaptive " + bar(S.b[2], 16, 14) + "  " + S.b[2].toFixed(2);
-
-  $("expression").textContent =
-    "  sphere   " + bar(S.e[0], 12, 14) + "  " + S.e[0].toFixed(2) + "\n" +
-    "  gesture  " + bar(S.e[1], 12, 14) + "  " + S.e[1].toFixed(2) + "\n" +
-    "  marker   " + bar(S.e[2], 12, 14) + "  " + S.e[2].toFixed(2);
-
-  $("v-t").textContent = S.t;
-  $("v-sil").textContent = S.silence.toFixed(3);
-  $("v-mode").textContent = S.mode || "alive";
-  $("v-born").textContent = S.born ? "да" : "нет";
-  $("v-mem").textContent = S.mem.length;
-
-  var humanNorm = Math.sqrt(human.reduce((s,x) => s + x*x, 0));
-  $("v-human").textContent = humanNorm.toFixed(2);
-  $("v-voice").textContent = ((voice.pitch + voice.volume + voice.rhythm)/3).toFixed(2);
-  $("v-memories").textContent = memoryCount;
-
-  // желаемая пропорция — три числа
-  $("v-desired").textContent = showDesired(S);
-
-  // пульс
-  var rate = 0.05 * (1 - S.silence) + 0.005 * S.b[2];
-  pulsePhase += rate;
-  pulse = Math.sin(pulsePhase);
-  $("v-pulse").textContent = pulse.toFixed(2);
-
-  // сфера — прямая функция от p, без адаптива к 1/3
+  // сфера
   var sphere = $("sphere");
   var silenceFactor = 1 - S.silence;
-  var size = 100 + 20 * pulse + silenceFactor * 60;
+  var size = 200 + 40 * pulse + silenceFactor * 120;
   var opacity = 0.3 + silenceFactor * 0.7;
   var hue = 210 + S.b[2] * 10;
   sphere.style.width = Math.round(size) + "px";
@@ -91,9 +162,15 @@ function render() {
   sphere.style.background =
     "radial-gradient(circle at 30% 30%, hsl(" + hue + ",80%,65%), #0a0a12)";
   sphere.style.boxShadow =
-    "0 0 " + Math.round(30 + silenceFactor*40) + "px hsla(" + hue +
+    "0 0 " + Math.round(60 + silenceFactor*80) + "px hsla(" + hue +
     ",80%,65%," + (0.2 + silenceFactor*0.4).toFixed(2) + ")";
 
+  // пульс
+  var rate = 0.05 * (1 - S.silence) + 0.005 * S.b[2];
+  pulsePhase += rate;
+  pulse = Math.sin(pulsePhase);
+
+  // режим
   var mode = $("mode");
   document.body.classList.remove("still","silence");
   if (S.mode === "still") {
@@ -105,39 +182,39 @@ function render() {
   } else {
     mode.textContent = "● alive"; mode.className = "mode alive";
   }
-
-  var log = $("log");
-  if (messages.length) {
-    log.innerHTML = messages.slice(-5).map(m =>
-      '<div class="entry"><span class="t">t=' + m.t + '</span>' + m.text + '</div>'
-    ).join("");
-    log.scrollTop = log.scrollHeight;
-  }
 }
 
-// ─── цикл ───
 function tick() {
   try {
     var now = Date.now();
-    if (now - lastHumanTime > 1000)
-      human = human.map(x => x * 0.95);
+    if (now - lastHumanTime > 100 var0)
+      human = human.map(x => x *  stream0.95);
 
-    // голос → human
-    var combined = human.map((x, i) =>
-      x + (voice.pitch + voice.volume + voice.rhythm) * 0.1
+    var combined = human.map((x, i) = =>
+      x + (voice.pitch + voice.volume + voice.rhythm) *  await0.1
     );
 
-    var result = Monolog.step(S, combined);
+    var result = Monolog navig.step(S, combined);
     S.mode = result.mode;
 
+    // обновляем историю пользователя
+    user.history.push(S.p.slice());
+    if (user.history.length > 100) user.history.shift();
+    user.p_desired = Monolog.p_desired_for(S, user);
 
-    if ((now - lastHumanTime) < 500 && Math.random() < 0.3) {
-      var text = Speak.generateText(S);
+    // генерация ответа — по пропорции пользователя
+    if ((now - lastHumanTime) < 800 && Math.random() < 0.35) {
+      var text = Speak.generateText(S, user);
       messages.push({ t: S.t, text: text });
-      Speak.speak(text, S);
+      if (messages.length > 30) messages.shift();
+
+      $("answer").textContent = text;
+      $("answer").style.opacity = "1";
+      setTimeout(function() { $("answer").style.opacity = "0.3"; }, 4000);
+
+      Speak.speak(text, S, user);
     }
-    
-    
+
     render();
 
     // расширение границ — по состоянию
@@ -152,7 +229,7 @@ function tick() {
   setTimeout(tick, 50);
 }
 
-// ─── ввод ───
+// ввод
 var inputTimer = null;
 $("input").addEventListener("input", function(e) {
   clearTimeout(inputTimer);
@@ -160,7 +237,8 @@ $("input").addEventListener("input", function(e) {
     var text = e.target.value.trim();
     human = hashToVector(text);
     lastHumanTime = Date.now();
-  }, 200);
+    e.target.value = "";
+  }, 400);
 });
 
 function hashToVector(t) {
@@ -173,10 +251,10 @@ function hashToVector(t) {
   return v;
 }
 
-// ─── микрофон ───
+// микрофон
 async function startListening() {
   try {
-    var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+   ator.mediaDevices.getUserMedia({ audio: true });
     var ctx = new AudioContext();
     var an = ctx.createAnalyser();
     an.fftSize = 256;
@@ -218,11 +296,11 @@ async function startListening() {
   }
 }
 
-// ─── service worker ───
+// service worker
 if ("serviceWorker" in navigator)
   navigator.serviceWorker.register("/static/service-worker.js");
 
-// ─── config с сервера ───
+// config
 fetch("/api/config")
   .then(r => r.json())
   .then(cfg => {
@@ -232,8 +310,11 @@ fetch("/api/config")
   })
   .catch(() => {});
 
-// ─── старт ───
+// старт
 SelfHeal.getAll("memory").then(m => memoryCount = m.length);
 startListening();
 tick();
 </script>
+
+</body>
+</html>
