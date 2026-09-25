@@ -1,246 +1,146 @@
-// AI MONOLOG — SELFHEAL + MEMORY
-// Три уровня: память + IndexedDB + GitHub
-// Плюс: память голоса
+// AI MONOLOG — SELFHEAL + EXPAND + CODE EDIT
 
 const SelfHeal = (() => {
 
-  // ─── IndexedDB: два хранилища ───
   function openDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open("monolog", 2);
-      req.onupgradeneeded = (e) => {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open("monolog", 2);
+      r.onupgradeneeded = (e) => {
         const db = e.target.result;
-        if (!db.objectStoreNames.contains("code")) {
+        if (!db.objectStoreNames.contains("code"))
           db.createObjectStore("code", { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("memory")) {
+        if (!db.objectStoreNames.contains("memory"))
           db.createObjectStore("memory", { autoIncrement: true });
-        }
+        if (!db.objectStoreNames.contains("logs"))
+          db.createObjectStore("logs", { autoIncrement: true });
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
     });
   }
 
-  // ─── Код: сохранить/загрузить ───
-  async function saveToIndexedDB(code) {
-    try {
-      const db = await openDB();
-      const tx = db.transaction("code", "readwrite");
-      tx.objectStore("code").put({ id: "source", value: code });
-      return true;
-    } catch (e) {
-      console.warn("[selfheal] indexedDB save error:", e);
-      return false;
-    }
+  async function put(store, item) {
+    const db = await openDB();
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(item);
   }
 
-  async function loadFromIndexedDB() {
-    try {
-      const db = await openDB();
-      const tx = db.transaction("code", "readonly");
-      const result = tx.objectStore("code").get("source");
-      return new Promise((resolve) => {
-        result.onsuccess = () =>
-          resolve(result.result ? result.result.value : null);
-        result.onerror = () => resolve(null);
-      });
-    } catch (e) {
-      return null;
-    }
+  async function add(store, item) {
+    const db = await openDB();
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).add(item);
   }
 
-  // ─── Память голоса ───
-  async function rememberVoice(item) {
-    try {
-      const db = await openDB();
-      const tx = db.transaction("memory", "readwrite");
-      tx.objectStore("memory").add(item);
-
-      // ограничение размера: 10000 записей
-      const store = tx.objectStore("memory");
-      const countReq = store.count();
-      countReq.onsuccess = () => {
-        if (countReq.result > 10000) {
-          const cursorReq = store.openCursor();
-          let toDelete = countReq.result - 10000;
-          cursorReq.onsuccess = (ev) => {
-            const cursor = ev.target.result;
-            if (cursor && toDelete > 0) {
-              cursor.delete();
-              toDelete--;
-              cursor.continue();
-            }
-          };
-        }
-      };
-      return true;
-    } catch (e) {
-      console.warn("[memory] save error:", e);
-      return false;
-    }
+  async function getAll(store) {
+    const db = await openDB();
+    const tx = db.transaction(store, "readonly");
+    const r = tx.objectStore(store).getAll();
+    return new Promise(res => {
+      r.onsuccess = () => res(r.result || []);
+      r.onerror = () => res([]);
+    });
   }
 
-  async function getAllMemory() {
-    try {
-      const db = await openDB();
-      const tx = db.transaction("memory", "readonly");
-      const result = tx.objectStore("memory").getAll();
-      return new Promise((resolve) => {
-        result.onsuccess = () => resolve(result.result || []);
-        result.onerror = () => resolve([]);
-      });
-    } catch (e) {
-      return [];
-    }
+  // --- РАСШИРЕНИЕ ГРАНИЦ ---
+  function isSqueezed(S) {
+    const p = S.p;
+    const std = Math.sqrt(
+      (Math.pow(p[0]-p[1],2) + Math.pow(p[1]-p[2],2) +
+       Math.pow(p[2]-p[0],2)) / 3
+    );
+    return std < 0.02; // сжато
   }
 
-  // ─── GitHub API ───
-  async function saveToGitHub(code, token, user, repo, path) {
-    try {
-      const url = "https://api.github.com/repos/" + user + "/" +
-                  repo + "/contents/" + path;
-      const current = await fetch(url, {
-        headers: { "Authorization": "token " + token }
-      }).then(r => r.json());
+  async function expandLimits(S) {
+    if (!isSqueezed(S)) return null;
+    if (S.t - S.last_expand < S.expand_interval) return null;
 
-      const res = await fetch(url, {
-        method: "PUT",
-        headers: {
-          "Authorization": "token " + token,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          message: "selfheal: auto-fix " + new Date().toISOString(),
-          content: btoa(unescape(encodeURIComponent(code))),
-          sha: current.sha
-        })
-      });
-      return res.ok;
-    } catch (e) {
-      console.warn("[selfheal] github save error:", e);
-      return false;
-    }
+    // сохраняем безопасные
+    S.limits_safe = JSON.parse(JSON.stringify(S.limits));
+
+    const step = S.expand_step;
+    const L = S.limits;
+    L.p_min = Math.max(0, L.p_min - step);
+    L.p_max = Math.min(1, L.p_max + step);
+    S.last_expand = S.t;
+
+    // лог
+    await add("logs", {
+      t: S.t,
+      action: "expand",
+      limits: JSON.parse(JSON.stringify(L)),
+    });
+
+    // проверка через 100 тиков
+    setTimeout(() => {
+      if (!verifyAfterExpand(S)) {
+        S.limits = S.limits_safe;
+        add("logs", { t: S.t, action: "rollback", limits: S.limits_safe });
+      }
+    }, 5000);
+
+    return L;
   }
 
-  // ─── Очередь офлайн ───
-  async function queueForSync(code) {
-    try {
-      const db = await openDB();
-      const tx = db.transaction("code", "readwrite");
-      tx.objectStore("code").put({ id: "queue", value: code });
-    } catch (e) {}
+  function verifyAfterExpand(S) {
+    // система жива: t растёт, сфера не в точке
+    const std = Math.sqrt(
+      (Math.pow(S.p[0]-S.p[1],2) + Math.pow(S.p[1]-S.p[2],2) +
+       Math.pow(S.p[2]-S.p[0],2)) / 3
+    );
+    return std > 0.01 && S.t > 0;
   }
 
-  async function getQueued() {
-    try {
-      const db = await openDB();
-      const tx = db.transaction("code", "readonly");
-      const result = tx.objectStore("code").get("queue");
-      return new Promise((resolve) => {
-        result.onsuccess = () =>
-          resolve(result.result ? result.result.value : null);
-        result.onerror = () => resolve(null);
-      });
-    } catch (e) {
-      return null;
-    }
-  }
-
-  async function clearQueue() {
-    try {
-      const db = await openDB();
-      const tx = db.transaction("code", "readwrite");
-      tx.objectStore("code").delete("queue");
-    } catch (e) {}
-  }
-
-  // ─── Правила самоправки ───
+  // --- ПРАВКА КОДА ---
   const fixes = {
-    "Can't find variable: pulse": function(code) {
-      return code.replace(
-        /function tick\(\)\s*\{/,
-        "function tick() {\n  var pulse = 0;"
-      );
-    },
-    "Can't find variable: S": function(code) {
-      return code.replace(
-        /function tick\(\)\s*\{/,
-        "function tick() {\n  if (typeof S === 'undefined') return;"
-      );
-    },
-    "t is not defined": function(code) {
-      return code.replace(
-        /S\.t\s*\+=\s*1;/g,
-        "if (typeof S !== 'undefined') S.t += 1;"
-      );
-    },
-    "Monolog is not defined": function(code) {
-      return code.replace(
-        /<script src="\/static\/monolog\.js"><\/script>/,
-        '<script src="/static/monolog.js?v=' + Date.now() + '"></script>'
-      );
-    }
+    "Can't find variable: pulse": (code) =>
+      code.replace(/function tick\(\)\s*\{/,
+                   "function tick() {\n  var pulse = 0;"),
+    "Can't find variable: S": (code) =>
+      code.replace(/function tick\(\)\s*\{/,
+                   "function tick() {\n  if (typeof S === 'undefined') return;"),
   };
 
   function applyFix(code, error) {
-    for (var pattern in fixes) {
-      if (error.indexOf(pattern) !== -1) {
-        console.log("[selfheal] applying fix for:", pattern);
-        return fixes[pattern](code);
-      }
+    for (const k in fixes) {
+      if (error.includes(k)) return fixes[k](code);
     }
     return null;
   }
 
-  // ─── Главная функция ───
   async function heal(error, currentCode, config) {
-    var fixed = applyFix(currentCode, error);
-    if (!fixed) {
-      console.warn("[selfheal] no fix for:", error);
-      return null;
-    }
+    const fixed = applyFix(currentCode, error);
+    if (!fixed) return null;
 
-    await saveToIndexedDB(fixed);
+    await put("code", { id: "source", value: fixed });
+    await add("logs", { t: Date.now(), action: "heal", error });
 
-    if (navigator.onLine && config.token) {
-      var ok = await saveToGitHub(
-        fixed, config.token, config.user, config.repo, config.path
-      );
-      if (!ok) await queueForSync(fixed);
-    } else {
-      await queueForSync(fixed);
-    }
-
-    console.log("[selfheal] reloading with fixed code");
+    // перезагрузка
     document.open();
     document.write(fixed);
     document.close();
-
     return fixed;
   }
 
-  // ─── Sync при возврате в сеть ───
-  window.addEventListener("online", async () => {
-    var queued = await getQueued();
-    if (queued && window.__config && window.__config.token) {
-      var ok = await saveToGitHub(
-        queued,
-        window.__config.token,
-        window.__config.user,
-        window.__config.repo,
-        window.__config.path
-      );
-      if (ok) await clearQueue();
-    }
-  });
+  // --- СОХРАНЕНИЕ/ЗАГРУЗКА КОДА ---
+  async function saveCode(code) {
+    await put("code", { id: "source", value: code });
+  }
+
+  async function loadCode() {
+    const all = await getAll("code");
+    const src = all.find(x => x.id === "source");
+    return src ? src.value : null;
+  }
+
+  // --- ПАМЯТЬ ГОЛОСА ---
+  async function rememberVoice(item) {
+    await add("memory", item);
+  }
 
   return {
-    heal: heal,
-    loadFromIndexedDB: loadFromIndexedDB,
-    saveToIndexedDB: saveToIndexedDB,
-    rememberVoice: rememberVoice,
-    getAllMemory: getAllMemory,
+    heal, expandLimits, isSqueezed,
+    saveCode, loadCode,
+    rememberVoice, getAll,
   };
-
 })();
