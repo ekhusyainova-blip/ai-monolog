@@ -1,40 +1,13 @@
-// AI MONOLOG — генерация текста и голоса.
-// Без LLM. На правилах. От p_desired.
+// AI MONOLOG — генерация текста и голоса под пользователя.
+// Без LLM. От p_desired. Словари — в S.
 
 const Speak = (() => {
 
-  // --- ТЕКСТ ---
-
-  // словари. нейтральные, без терминов
-  const WORDS = {
-    core:   ["ты", "я", "центр", "середина", "ось", "опора"],
-    method: ["шаг", "дело", "движение", "путь", "ритм", "темп"],
-    ethics: ["мы", "рядом", "вместе", "связь", "друг", "встреча"],
-  };
-
-  const VERBS = {
-    low:  ["держишь", "стоишь", "молчишь", "ждёшь"],
-    mid:  ["идёшь", "дышишь", "смотришь", "слушаешь"],
-    high: ["летишь", "рвёшься", "кипишь", "сияешь"],
-  };
-
-  const ENDINGS = {
-    soft:  [".", "...", " "],
-    mid:   ["?", " — ", "."],
-    sharp: ["!", ".", "?"],
-  };
-
   function pick(arr) {
+    if (!arr || !arr.length) return "";
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
-  // p_desired → слово
-  function wordFromP(p, idx) {
-    const keys = ["core", "method", "ethics"];
-    return pick(WORDS[keys[idx]]);
-  }
-
-  // p_desired → тон
   function toneFromP(p) {
     const avg = (p[0] + p[1] + p[2]) / 3;
     if (avg < 0.25) return "low";
@@ -42,7 +15,6 @@ const Speak = (() => {
     return "mid";
   }
 
-  // p_desired → окончание
   function endingFromP(p) {
     const std = Math.sqrt(
       (Math.pow(p[0]-p[1],2) + Math.pow(p[1]-p[2],2) +
@@ -53,70 +25,61 @@ const Speak = (() => {
     return "mid";
   }
 
-  // главная функция текста
-  function generateText(S) {
-    const p = S.p;
+  // главный вход: S + user → текст
+  function generateText(S, user) {
+    const p = user && user.p_desired ? user.p_desired : S.p;
     const tone = toneFromP(p);
     const ending = endingFromP(p);
 
-    // выбираем, о чём говорить
-    const maxIdx = p.indexOf(Math.max(...p));
-    const minIdx = p.indexOf(Math.min(...p));
+    const maxIdx = p.indexOf(Math.max.apply(null, p));
+    const minIdx = p.indexOf(Math.min.apply(null, p));
 
-    const subject = wordFromP(p, maxIdx);
-    const object  = wordFromP(p, minIdx);
-    const verb    = pick(VERBS[tone]);
-    const end     = pick(ENDINGS[ending]);
+    const keys = ["core", "method", "ethics"];
+    const subject = pick(S.words[keys[maxIdx]]);
+    const object  = pick(S.words[keys[minIdx]]);
+    const verb    = pick(S.verbs[tone]);
+    const end     = pick(S.endings[ending]);
 
-    // склеиваем. по правилам, не по шаблону
     let phrase = subject + " " + verb + " " + object + end;
 
-    // иногда добавляем вторую часть
     if (Math.random() < 0.4) {
-      phrase += " " + pick(WORDS.ethics) + " " + pick(ENDINGS.soft);
+      phrase += " " + pick(S.words.ethics) + " " + pick(S.endings.soft);
     }
 
     return phrase;
   }
 
-  // --- ГОЛОС ---
-
-  function speak(text, S) {
+  // голос: S + user
+  function speak(text, S, user) {
     if (!("speechSynthesis" in window)) return;
+    const p = user && user.p_desired ? user.p_desired : S.p;
 
-    const p = S.p;
-    const tone = toneFromP(p);
-
-    // тон: p[0] больше — выше, p[2] больше — ниже
     const pitch = 0.5 + (p[0] - p[2]) * 0.5;
+    const rate  = 0.7 + p[1] * 0.6;
+    const vol   = 0.4 + (p[0] + p[1] + p[2]) / 3 * 0.6;
 
-    // темп: p[1] больше — быстрее
-    const rate = 0.7 + p[1] * 0.6;
-
-    // громкость: среднее p
-    const volume = 0.4 + (p[0] + p[1] + p[2]) / 3 * 0.6;
-
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ru-RU";
-    u.pitch = Math.max(0.1, Math.min(2, pitch));
-    u.rate  = Math.max(0.5, Math.min(2, rate));
-    u.volume = Math.max(0, Math.min(1, volume));
-
-    // паузы: перекос p → паузы рваные
     const std = Math.sqrt(
       (Math.pow(p[0]-p[1],2) + Math.pow(p[1]-p[2],2) +
        Math.pow(p[2]-p[0],2)) / 3
     );
+
     if (std > 0.15) {
-      // рвано — разбиваем
+      // рвано
       const parts = text.split(" ");
       parts.forEach((part, i) => {
-        const uu = new SpeechSynthesisUtterance(part);
-        uu.lang = u.lang; uu.pitch = u.pitch;
-        uu.rate = u.rate; uu.volume = u.volume;
-        setTimeout(() => speechSynthesis.speak(uu), i * 300);
+        const u = new SpeechSynthesisUtterance(part);
+        u.lang = "ru-RU";
+        u.pitch = Math.max(0.1, Math.min(2, pitch));
+        u.rate  = Math.max(0.5, Math.min(2, rate));
+        u.volume = Math.max(0, Math.min(1, vol));
+        setTimeout(() => speechSynthesis.speak(u), i * 300);
       });
     } else {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ru-RU";
+      u.pitch = Math.max(0.1, Math.min(2, pitch));
+      u.rate  = Math.max(0.5, Math.min(2, rate));
+      u.volume = Math.max(0, Math.min(1, vol));
       speechSynthesis.speak(u);
     }
   }
