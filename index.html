@@ -1,6 +1,9 @@
-<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
+<!DOCTYPE html>
+<html lang="ru"><head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>MONOMOD v10.2</title><meta name="theme-color" content="#0a0809">
+<title>MONOMOD v10.2</title>
+<meta name="theme-color" content="#0a0809">
 <style>
 :root{--bg:#0a0809;--ac:#e8c39e;--tl:#4dd0c7;--dm:#3a3236;--ln:#221c1f;--gd:#f59e0b;--rd:#ef4444;--gr:#10b981;--pp:#a78bfa}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -69,9 +72,15 @@ button.act.primary{border-color:var(--pp);color:var(--pp)}
 
 <script>
 /* ============================================================
-   G · граф 67 узлов · 189 связей
+   M = ⟨G(68,194), Ψ(0.36/0.31/0.33), Ω(0.42),
+        ∮(arc→brg→ctr→core→convert→obs→wit→prt→fmt→att→lev→lex→gid→ahead→mode→git),
+        Λ(s·l·t·d·f·w), Γ(rt·st·ad·fx·nt·hm), Α(lg·ex·bf·mt·fl·dp),
+        HOME(plan·pri·hints·gid), MODE(local·hybrid·remote),
+        GIT(pull·push·ship·deploy)⟩⁵ᴰ
    ============================================================ */
-const G = {
+
+/* ---------- G · граф 68 узлов · 194 связи ---------- */
+const G={
   nodes:["core","map","chat","monolog","cognitive","perception","chatY","klepa",
     "agents","learning","profile","sphere","viz-1d","viz-5d","social-5d","ring",
     "ui","archive","bridge","center","convert",
@@ -82,7 +91,8 @@ const G = {
     "anticipate","calendar","notifications","priority","focus","focus_hints",
     "obs_in","obs_out","wit_in","wit_out","prt_in","prt_out","fmt_in","fmt_out",
     "attention","levers","lexicon","gid",
-    "logi","exchange","buffer","match","flow","dispatch"],
+    "logi","exchange","buffer","match","flow","dispatch",
+    "mode","git"],
   edges:[
     ["core","map",1],["core","chat",1],["core","monolog",1],["core","cognitive",1],
     ["core","perception",1],["core","chatY",1],["core","klepa",1],["core","agents",1],
@@ -158,359 +168,370 @@ const G = {
     ["match","dispatch",1.5],
     ["dispatch","gid",1.7],["dispatch","calendar",1.5],
     ["dispatch","notifications",1.5],["dispatch","attention",1.4],
+    ["core","mode",1.5],["mode","git",1.5],["mode","bridge",1.3],["mode","ui",1.3],
     ["core","git",1.6],["git","bridge",1.5],["git","archive",1.4],
     ["git","fmt_out",1.3],["git","dispatch",1.3],["git","attention",1.2]
   ],
-  W:{}, DEG:{}, GROUPS:{},
+  W:{},DEG:{},GR:{},
   build(){
-    this.edges.forEach(([a,b,w])=>{ this.W[a+"|"+b]=w; this.W[b+"|"+a]=w;
-      this.DEG[a]=(this.DEG[a]||0)+1; this.DEG[b]=(this.DEG[b]||0)+1 });
-    this.GROUPS={
+    this.edges.forEach(([a,b,w])=>{ this.W[a+"|"+b]=w;this.W[b+"|"+a]=w;
+      this.DEG[a]=(this.DEG[a]||0)+1;this.DEG[b]=(this.DEG[b]||0)+1 });
+    Object.assign(this.GR,{
       core:["core"],
       ahead:["logi","exchange","buffer","match","flow","dispatch"],
       guide:["gid","attention","levers","lexicon","anticipate","calendar","notifications","priority","focus","focus_hints"],
       observe:["obs_in","obs_out","wit_in","wit_out","prt_in","prt_out","fmt_in","fmt_out"],
       gen:["gen_text","gen_avatar","gen_video_avatar","video","anim","movies","blog"],
       social:["social","subs","utility","lots","templates","persona","reputation","chat","chat_voice","chat_avatar"],
-      git:["git"],
+      git:["git"],mode:["mode"],
       base:["map","monolog","cognitive","perception","chatY","klepa","agents","learning","profile","sphere","viz-1d","viz-5d","social-5d","ring","ui","archive","bridge","center","convert","adapt","game","travel","dims","sense","world","immersion"]
-    };
+    });
   },
-  neighbor(id){ return this.edges.filter(([a,b])=>a===id||b===id).map(([a,b])=>a===id?b:a) },
-  weight(a,b){ return this.W[a+"|"+b]||this.W[b+"|"+a]||1 },
-  degree(id){ return this.DEG[id]||0 },
-  group(id){ for(const g in this.GROUPS) if(this.GROUPS[g].includes(id)) return g; return "base" },
-  path(a,b){ if(a===b) return [a];
-    const q=[[a]], seen={[a]:1};
-    while(q.length){ const p=q.shift(), last=p[p.length-1];
-      for(const n of this.neighbor(last)){
-        if(seen[n]) continue;
-        if(n===b) return [...p,n];
-        seen[n]=1; q.push([...p,n]) } }
-    return null },
-  bfs(src,radius=3){
-    const out=[]; const q=[[src,0,1]]; const seen={[src]:1};
-    while(q.length){ const [id,d,acc]=q.shift();
-      if(d>=radius) continue;
-      for(const n of this.neighbor(id)){
-        if(seen[n]) continue; seen[n]=1;
-        const w=this.weight(id,n);
-        out.push({from:id,to:n,hop:d+1,w:+(acc*w).toFixed(3)});
-        q.push([n,d+1,acc*w]) } }
-    return out }
+  nb(id){return this.edges.filter(([a,b])=>a===id||b===id).map(([a,b])=>a===id?b:a)},
+  wt(a,b){return this.W[a+"|"+b]||this.W[b+"|"+a]||1},
+  dg(id){return this.DEG[id]||0},
+  gp(id){for(const g in this.GR)if(this.GR[g].includes(id))return g;return"base"},
+  path(a,b){if(a===b)return[a];const q=[[a]],s={[a]:1};while(q.length){const p=q.shift(),l=p[p.length-1];
+    for(const n of this.nb(l)){if(s[n])continue;if(n===b)return[...p,n];s[n]=1;q.push([...p,n])}}return null},
+  bfs(src,r=3){const o=[],q=[[src,0,1]],s={[src]:1};while(q.length){const[id,d,ac]=q.shift();if(d>=r)continue;
+    for(const n of this.nb(id)){if(s[n])continue;s[n]=1;const w=this.wt(id,n);
+      o.push({from:id,to:n,hop:d+1,w:+(ac*w).toFixed(3)});q.push([n,d+1,ac*w])}}return o}
 };
 G.build();
 
-/* ============================================================
-   S · шина
-   ============================================================ */
-const S = (()=>{
-  const L={}, R={};
-  return{
-    on(t,f){ (L[t]=L[t]||[]).push(f) },
-    emit(t,d){ (L[t]||[]).forEach(f=>{try{f(d)}catch(e){}}) },
-    node(id,api){ R[id]=api; S.emit("reg",{id}); return api },
-    get:id=>R[id], list:()=>Object.keys(R),
-    all(){ const o={}; for(const i in R) try{o[i]=R[i].snap?R[i].snap():null}catch(e){}; return o },
-    snap:()=>({form:"core",core:[.36,.31,.33],center:.42,hash:"rqlmhwgt",
-      registered:Object.keys(R).length, links:G.edges.length,
-      listeners:Object.keys(L).length}),
-    route(a,b,ty,payload){
-      const p=G.path(a,b); if(!p) return null;
-      let acc=1;
-      p.slice(1).forEach((id,i)=>{ acc*=G.weight(p[i],id);
-        setTimeout(()=>{ S.emit("hop",{i:i+1,from:p[i],to:id,path:p,type:ty,w:+acc.toFixed(3)});
-          S.emit(ty,{...payload,via:id,from:p[i],hopWeight:acc}); }, i*90) });
-      return p },
-    wave(src){
-      S.emit("wave",{src,t:Date.now()});
-      const w=document.getElementById("wave");
-      if(w){ w.style.opacity=.9; setTimeout(()=>w.style.opacity=0,180) }
-      const bfs=G.bfs(src,3);
-      bfs.forEach(({to,hop,w:acc})=>{ setTimeout(()=>S.emit("wave:hit",{src,node:to,hop,w:acc}),hop*70) }) },
-    echo(src,ty,payload){ setTimeout(()=>S.emit("echo",{src,type:ty,payload,t:Date.now()}), 600+Math.random()*300) },
-    cascade(src,ty,payload,depth=2){
-      S.emit(ty,{...payload,from:src});
-      const bfs=G.bfs(src,depth);
-      bfs.forEach(({to,hop,w})=>{ if(w<0.4) return;
-        setTimeout(()=>S.emit(ty+":cascade",{...payload,from:src,via:to,hop,w}),hop*120) }) }
-  };
-})();
+/* ---------- S · шина ---------- */
+const S=(()=>{const L={},R={};return{
+  on:(t,f)=>{(L[t]=L[t]||[]).push(f)},
+  emit:(t,d)=>{(L[t]||[]).forEach(f=>{try{f(d)}catch(e){}})},
+  node:(id,a)=>{R[id]=a;S.emit("reg",{id});return a},
+  get:id=>R[id],list:()=>Object.keys(R),
+  snap:()=>({registered:Object.keys(R).length,links:G.edges.length,listeners:Object.keys(L).length}),
+  route(a,b,ty,p){const ps=G.path(a,b);if(!ps)return null;let ac=1;
+    ps.slice(1).forEach((id,i)=>{ac*=G.wt(ps[i],id);
+      setTimeout(()=>{S.emit("hop",{i:i+1,from:ps[i],to:id,path:ps,type:ty,w:+ac.toFixed(3)});
+        S.emit(ty,{...p,via:id,from:ps[i]})},i*90)});return ps},
+  wave(src){S.emit("wave",{src,t:Date.now()});
+    G.bfs(src,3).forEach(({to,hop,w})=>setTimeout(()=>S.emit("wave:hit",{src,node:to,hop,w}),hop*70));
+    const w=document.getElementById("wave");if(w){w.style.opacity=.9;setTimeout(()=>w.style.opacity=0,180)}},
+  cascade(src,ty,p,d=2){S.emit(ty,{...p,from:src});
+    G.bfs(src,d).forEach(({to,hop,w})=>{if(w<0.4)return;
+      setTimeout(()=>S.emit(ty+":cascade",{...p,via:to,hop,w}),hop*120)})}
+}})();
+
 const clip=(v,a,b)=>Math.max(a,Math.min(b,v));
 const norm=(a,t)=>{const s=a.reduce((x,y)=>x+y,0)||1;return a.map(x=>x*t/s)};
 const rand=a=>a[Math.floor(Math.random()*a.length)];
 const def=(id,o)=>S.node(id,Object.assign({id,snap:()=>({form:id})},o));
 
-const Ψ={p:[0.36,0.31,0.33],rotate(){const [c,m,s]=this.p;
-  this.p=norm([c+.05*(s-m),m+.05*(c-s),s+.05*(m-c)].map(x=>clip(x,.05,.95)),1)},
-  sum(){return this.p.reduce((a,b)=>a+b,0)},snap(){return{form:"Ψ",p:this.p.slice(),sum:this.sum()}}};
-setInterval(()=>Ψ.rotate(),100);
-const Ω={value:0.42,locks:[],lock(reason="manual"){const l={t:Date.now(),reason,core:Ψ.p.slice(),center:this.value};
-  this.locks.push(l);if(this.locks.length>100)this.locks.shift();S.emit("ctr",{reason,t:l.t});return l},
-  snap:()=>({form:"Ω",value:this.value,locks:this.locks.length})};
+/* ---------- Ψ(0.36/0.31/0.33) ---------- */
+def("psi",(()=>{const st={p:[0.36,0.31,0.33],t:0};
+  const rot=(s=0.05)=>{const[c,m,e]=st.p;
+    st.p=norm([c+s*(e-m),m+s*(c-e),e+s*(m-c)].map(x=>clip(x,.05,.95)),1);st.t++;return st.p};
+  setInterval(()=>rot(),100);
+  return{st,rot,get:()=>st.p.slice(),sum:()=>st.p.reduce((a,b)=>a+b,0),
+    snap:()=>({form:"Ψ",p:st.p.slice(),sum:+st.p.reduce((a,b)=>a+b,0).toFixed(3),t:st.t})}})());
 
-/* ============================================================
-   УЗЛЫ
-   ============================================================ */
-def("map",{snap:()=>({form:"map",n:G.nodes.length,m:G.edges.length})});
-def("chat",(()=>{const h=[];return{push:(w,t)=>{h.push({w,t,ts:Date.now()});if(h.length>200)h.shift();S.emit("msg",{w,t,ts:Date.now()})},log:()=>h,snap:()=>({form:"chat",msgs:h.length})}})());
-def("chat_voice",(()=>{const h=[];return{push:(w,t,dur)=>{h.push({w,t,dur,ts:Date.now()});S.emit("voice:out",{w,t,dur})},
-  speak:t=>{ if(!("speechSynthesis" in window)){return} const u=new SpeechSynthesisUtterance(t);u.lang="ru-RU";u.pitch=.5+(Ψ.p[0]-Ψ.p[2])*.5;u.rate=.7+Ψ.p[1]*.6;speechSynthesis.speak(u) },
-  listen:cb=>{ try{ const R=window.SpeechRecognition||window.webkitSpeechRecognition; if(!R) return null;
-    const r=new R(); r.lang="ru-RU"; r.continuous=true; r.interimResults=false;
-    r.onresult=e=>{ const t=e.results[e.results.length-1][0].transcript; cb(t) }; r.start(); return r }catch(e){return null} },
-  log:()=>h,snap:()=>({form:"chat_voice",msgs:h.length})}})());
-def("chat_avatar",(()=>{const h=[];const personas=[{name:"Исследователь",p:[.4,.3,.3]},{name:"Наблюдатель",p:[.5,.2,.3]},{name:"Строитель",p:[.3,.4,.3]},{name:"Творец",p:[.3,.3,.4]}];
-  return{personas,log:()=>h,push:(who,text)=>h.push({who,text,ts:Date.now()}),snap:()=>({form:"chat_avatar",msgs:h.length})}})());
-def("gen_text",(()=>{const W={core:["ось","центр","опора","ядро"],method:["шаг","путь","ритм"],ethics:["мы","связь","рядом"]};
-  const V=["держишь","идёшь","дышишь"];const E=[".","..."," — ","?","!"];
-  const gen=()=>{const mx=Ψ.p.indexOf(Math.max(...Ψ.p)),mn=Ψ.p.indexOf(Math.min(...Ψ.p));const K=["core","method","ethics"];return rand(W[K[mx]])+" "+rand(V)+" "+rand(W[K[mn]])+rand(E)};
-  const respond=i=>{const t=i.toLowerCase();
-    if(t.includes("привет")||t.includes("здрав"))return "· держу ось";
-    if(t.includes("план"))return "· план: "+S.get("home").plan().slice(0,3).map(x=>x.title).join(", ");
-    if(t.includes("лот"))return "· открой lots → buy";
-    if(t.includes("связ"))return "· всего "+G.edges.length+" связей";
-    if(t.includes("git")||t.includes("репо"))return "· git: "+(S.get("git")?S.get("git").status().lastStatus:"—");
-    return "· "+gen()};
-  return{gen,respond,snap:()=>({form:"gen_text"})}})());
-def("gen_avatar",(()=>{const P=[{name:"Исследователь",p:[.4,.3,.3],v:["паттерн","связь"]},{name:"Наблюдатель",p:[.5,.2,.3],v:["фиксирую","вижу"]},{name:"Строитель",p:[.3,.4,.3],v:["мост","блок"]},{name:"Творец",p:[.3,.3,.4],v:["создаю","рисую"]}];
-  const gen=who=>{const p=P.find(x=>x.name===who)||P[0];return rand(p.v)+" "+rand(["тихо","ясно","ровно"])};
-  return{list:()=>P.map(x=>x.name),gen,snap:()=>({form:"gen_avatar",count:P.length})}})());
-def("social",(()=>{const posts=[];return{posts:()=>posts.slice(-40),snap:()=>({form:"social",posts:posts.length})}})());
-def("subs",(()=>{const s=new Set(["Исследователь","Наблюдатель"]);
-  return{list:()=>[...s],add:n=>{s.add(n);S.emit("subs:add",{name:n})},drop:n=>{s.delete(n);S.emit("subs:drop",{name:n})},snap:()=>({form:"subs",count:s.size})}})());
-def("utility",(()=>{const idx={core:9.4,convert:8.7,git:8.5,logi:7.5};
-  const get=n=>idx[n]||5;return{idx,get,snap:()=>({form:"utility",avg:+Object.values(idx).reduce((a,b)=>a+b,0)/Object.keys(idx).length})}})());
-def("lots",(()=>{const L=[{id:"#1",name:"архив s5xkz",u:9.2},{id:"#2",name:"доступ к Исследователю",u:5},{id:"#3",name:"шаблон chat→voice",u:2.5}];
-  return{list:()=>L.map(l=>({...l,price:Math.round(10*l.u)})),
-    buy:id=>{const l=L.find(x=>x.id===id);if(l){S.emit("lots:sold",{id,name:l.name});S.emit("buffer:store",{id:"lot"+Date.now(),item:l.name,price:Math.round(10*l.u)})}return l},
-    snap:()=>({form:"lots",count:L.length})}})());
-def("templates",(()=>{const T=["route:sphere→learning","avatar:Исследователь","format:1→10","git:push"];
-  return{list:()=>T,apply:id=>S.emit("tpl:apply",{id}),snap:()=>({form:"templates",count:T.length})}})());
-def("persona",(()=>{const P=[{id:"self",name:"вы",p:[.36,.31,.33]},{id:"Исследователь",name:"Исследователь",p:[.4,.3,.3]},{id:"Наблюдатель",name:"Наблюдатель",p:[.5,.2,.3]}];
-  return{list:()=>P,get:id=>P.find(x=>x.id===id||x.name===id),snap:()=>({form:"persona",count:P.length})}})());
-def("reputation",(()=>{const rep={"вы":7.2};return{rep,get:n=>rep[n]||5,snap:()=>({form:"reputation"})}})());
-def("anticipate",(()=>{const hints=[];return{hints:()=>hints.slice(-20),predict:()=>({}),snap:()=>({form:"anticipate",hints:hints.length})}})());
-def("calendar",(()=>{const events=[];return{events:()=>events.slice(-30),add:(t,w)=>{const e={id:"e"+Date.now().toString(36),title:t,when:w,ts:Date.now()};events.push(e);return e},snap:()=>({form:"calendar",count:events.length})}})());
-def("notifications",(()=>{const n=[];return{list:()=>n.slice(),push:(t,p=.5)=>{const x={id:"n"+Date.now().toString(36),title:t,priority:p,read:false,ts:Date.now()};n.push(x);if(n.length>100)n.shift();S.emit("notify",x);return x},unread:()=>n.filter(x=>!x.read).length,snap:()=>({form:"notifications",count:n.length,unread:n.filter(x=>!x.read).length})}})());
-def("priority",(()=>{const sorted=()=>S.get("notifications").list().map(n=>({...n,score:1.0})).sort((a,b)=>b.score-a.score);return{sorted,snap:()=>({form:"priority",count:sorted().length})}})());
-def("focus",(()=>{const st={level:.7};return{level:()=>st.level,snap:()=>({form:"focus",level:st.level})}})());
-def("focus_hints",(()=>{return{latest:()=>({hints:["· сделай шаг в gid","· открой home"]}),suggest:()=>[],snap:()=>({form:"focus_hints"})}})());
-def("attention",(()=>{const st={level:0.7,mode:"ровный",noise:0.3};return{state:()=>({...st}),compute:()=>st,snap:()=>({form:"ATT",level:st.level,mode:st.mode})}})());
-def("levers",(()=>{const l={silence:{v:0.42,min:0,max:1},lexicon:{v:0.4,min:0,max:1},tempo:{v:1,min:0.5,max:2},depth:{v:2,min:1,max:4},filter:{v:"soft"},wave_gain:{v:0.7,min:0,max:1}};
-  const stability=()=>{const n=Math.max(0.1,S.get("attention").state().noise);return clip((l.silence.v+l.lexicon.v+0.5)/(l.tempo.v*l.depth.v*n),0,2)};
-  return{levers:l,apply:(k,v)=>{l[k].v=v;S.emit("levers:apply",{name:k,value:v})},stability,reset:()=>{},snap:()=>({form:"LEV",stability:+stability().toFixed(2)})}})());
-def("lexicon",(()=>{const base={core:["ось","центр","опора"],method:["шаг","путь","ритм"],ethics:["мы","связь","рядом"]};
-  const extra=[];const size=()=>Object.values(base).flat().length+extra.length;
-  return{base,extra,pick:k=>base[k][0],expand:()=>{},size,snap:()=>({form:"LEX",total:size()})}})());
-def("sense",(()=>{const st={wave_gain:.7,echo_delay:300,silence:.42,immersion:.85,filter:"soft"};
-  return{st,set:(k,v)=>{st[k]=v;S.emit("sense:shift",{k,v})},snap:()=>({form:"sense",...st})}})());
-def("sphere",(()=>{const S2={silence:.42,t:0,mode:"alive",_h:[0,0,0,0,0,0,0,0]};
-  setInterval(()=>{S2.t++;S.emit("sphere:tick",{mode:S2.mode,t:S2.t,silence:S2.silence});
-    if(S2.t%40===0){S.emit("core:beat",{t:S2.t});S.wave("sphere")}},50);
-  return{S:S2,push:v=>S2._h=v,snap:()=>({form:"sphere",mode:S2.mode,t:S2.t})}})());
-def("logi",(()=>{const cargo=[];return{cargo:()=>cargo.slice(-30),move:(f,t,i)=>{const m={from:f,to:t,item:i,t:Date.now()};cargo.push(m);S.emit("logi:move",m);return m},snap:()=>({form:"LOGI",cargo:cargo.length})}})());
-def("exchange",(()=>{return{deal:(f,t,i)=>{const d={from:f,to:t,item:i,price:10,ts:Date.now()};S.emit("exchange:deal",d);return d},snap:()=>({form:"EXCH"})}})());
-def("buffer",(()=>{const s=[];return{store:()=>s.slice(-30),put:(id,item,p)=>{s.push({id,item,payload:p,t:Date.now()});return s[s.length-1]},snap:()=>({form:"BUF",stored:s.length})}})());
-def("match",(()=>{const m=[];return{matches:()=>m.slice(-30),try_:()=>{const x={a:"core",b:"persona",item:"signal"};m.push(x);S.emit("match:found",x);return x},snap:()=>({form:"MATCH",found:m.length})}})());
-def("flow",(()=>{const s=[];return{series:()=>s.slice(-30),predict:()=>{const f={t:s.length+1,flow:0,ts:Date.now()};s.push(f);return f},snap:()=>({form:"FLOW",ticks:s.length})}})());
-def("dispatch",(()=>{const a=[];return{actions:()=>a.slice(-30),act:(w,wh)=>{const x={what:w,where:wh,ts:Date.now()};a.push(x);S.emit("dispatch:act",x);return x},snap:()=>({form:"DISP",dispatched:a.length})}})());
-def("gid",(()=>{const st={route:["core"],target:"core",step:0,params:{rt:.8,st:.7,ad:.6,fx:.7,nt:.8,hm:.9},history:[]};
-  const Γ=()=>{const p=st.params;return +((p.rt+p.st+p.ad+p.fx+p.nt+p.hm)/6).toFixed(2)};
-  const routeTo=t=>{st.target=t;const p=G.path("core",t)||["core"];st.route=p;st.step=0;S.emit("gid:route",{target:t,path:p});return p};
-  const step_=()=>{st.step++;if(st.step>st.route.length-1){st.route=G.path("core",rand(G.nodes))||["core"];st.step=0}
-    const n=st.route[st.step]||"core";st.history.push({to:n,ts:Date.now()});S.emit("gid:step",{to:n,Γ:Γ()});return n};
-  return{st,routeTo,Γ,step:step_,snap:()=>({form:"GID",target:st.target,Γ:Γ()})}})());
-def("home",(()=>{const plan=()=>[{t:"сейчас",title:"план на день"},{t:"сейчас",title:"разобрать уведомления"},{t:"через час",title:"конверсия 1→10"},{t:"днём",title:"путешествие"},{t:"вечером",title:"Ω=0.42"}];
-  return{plan,snap:()=>({form:"HOME",plan:plan().length})}})());
-def("archive",(()=>{const A=[];return{add:(l)=>{const s={id:"s"+Date.now().toString(36),label:l,t:Date.now()};A.push(s);return s},load:()=>A.slice(),snap:()=>({form:"archive",entries:A.length})}})());
-def("bridge",(()=>{const log=[];return{pass:(f,t,p)=>{const x={from:f,to:t,payload:p,t:Date.now()};log.push(x);return x},log:()=>log.slice(),snap:()=>({form:"bridge",passed:log.length})}})());
-def("center",(()=>{const L=[];return{lock:r=>{const l=Ω.lock(r);L.push(l);return l},locks:()=>L,snap:()=>({form:"center",locks:L.length})}})());
-def("obs_in",{snap:()=>({form:"obs_in"})});
-def("obs_out",{snap:()=>({form:"obs_out"})});
-def("wit_in",{snap:()=>({form:"wit_in"})});
-def("wit_out",{snap:()=>({form:"wit_out"})});
-def("prt_in",{snap:()=>({form:"prt_in"})});
-def("prt_out",{snap:()=>({form:"prt_out"})});
-def("fmt_in",{snap:()=>({form:"fmt_in"})});
-def("fmt_out",{snap:()=>({form:"fmt_out"})});
-def("ui",{snap:()=>({form:"ui"})});
+/* ---------- Ω(0.42) ---------- */
+def("omega",(()=>{const st={value:0.42,locks:[]};
+  const lock=r=>{const l={t:Date.now(),reason:r,core:S.get("psi").get(),center:st.value};
+    st.locks.push(l);if(st.locks.length>100)st.locks.shift();
+    S.emit("ctr:lock",{reason:r,t:l.t});return l};
+  S.on("git:push",()=>lock("git"));
+  return{st,lock,compute:()=>+(S.get("psi").sum()/3+0.09).toFixed(3),
+    snap:()=>({form:"Ω",value:st.value,computed:+(S.get("psi").sum()/3+0.09).toFixed(3),locks:st.locks.length})}})());
 
-/* ============================================================
-   M.MODE · ЛОКАЛЬНЫЙ РЕЖИМ
-   local  — всё в localStorage, GitHub не трогаем
-   hybrid — local + pull по кнопке
-   remote — pull при старте
-   ============================================================ */
-def("mode",(()=>{
-  const K="monomod.mode";
+/* ---------- ∮ · петля ---------- */
+def("loop",(()=>{const order=["arc","brg","ctr","core","convert","obs","wit","prt","fmt",
+    "att","lev","lex","gid","ahead","mode","git"];
+  const st={t:0,period:280,i:0};
+  const step=()=>{st.t=(st.t+1)%st.period;
+    if(st.t%28===0){st.i=(st.i+1)%order.length;S.emit("loop:step",{node:order[st.i],t:st.t})}
+    if(st.t===0)S.emit("loop:full",{period:st.period});
+    return st.i};
+  setInterval(step,50);
+  return{st,step,order,snap:()=>({form:"∮",t:st.t,period:st.period,at:order[st.i],nodes:order.length})}})());
+
+/* ---------- Λ(s·l·t·d·f·w) ---------- */
+def("lambda",(()=>{const P={s:{v:.42,min:0,max:1},l:{v:.4,min:0,max:1},t:{v:1,min:.5,max:2},
+    d:{v:2,min:1,max:4},f:{v:"soft"},w:{v:.7,min:0,max:1}};
+  const cmp=()=>+clip((P.s.v+P.l.v+.5)/(P.t.v*P.d.v*.3),0,2).toFixed(2);
+  const set=(k,v)=>{if(!P[k])return null;P[k].v=v;S.emit("lambda:set",{key:k,value:v});
+    if(k==="s"&&S.get("sense"))S.get("sense").set("silence",v);
+    if(k==="w"&&S.get("sense"))S.get("sense").set("wave_gain",v);
+    if(k==="f"&&S.get("sense"))S.get("sense").set("filter",v);
+    return P[k].v};
+  const reset=()=>{P.s.v=.42;P.l.v=.4;P.t.v=1;P.d.v=2;P.f.v="soft";P.w.v=.7};
+  setInterval(()=>{if(cmp()<0.3){set("s",clip(P.s.v+0.05,0,1));set("w",clip(P.w.v-0.05,0,1));
+    S.emit("lambda:autocorrect",{stability:cmp()})}},5000);
+  return{P,set,compute:cmp,reset,
+    snap:()=>({form:"Λ",stability:cmp(),s:P.s.v,l:P.l.v,t:P.t.v,d:P.d.v,f:P.f.v,w:P.w.v})}})());
+
+/* ---------- Γ(rt·st·ad·fx·nt·hm) ---------- */
+def("gamma",(()=>{const P={rt:.8,st:.7,ad:.6,fx:.7,nt:.8,hm:.9};
+  const st={target:"core",step:0,route:["core"],h:[]};
+  const cmp=()=>+((P.rt+P.st+P.ad+P.fx+P.nt+P.hm)/6).toFixed(2);
+  const rT=t=>{st.target=t;st.route=G.path("core",t)||["core"];st.step=0;
+    S.emit("gamma:route",{target:t,path:st.route});return st.route};
+  const step=()=>{st.step++;if(st.step>st.route.length-1){st.route=G.path("core",rand(G.nodes))||["core"];st.step=0}
+    const n=st.route[st.step]||"core";st.h.push({to:n,ts:Date.now()});
+    if(st.h.length>30)st.h.shift();S.emit("gamma:step",{to:n,gamma:cmp()});return n};
+  setInterval(()=>{if(Math.random()<.3)step()},3000);
+  return{P,set:(k,v)=>{if(k in P){P[k]=clip(v,0,1);S.emit("gamma:set",{key:k,value:P[k]})}},
+    compute:cmp,routeTo:rT,step,st,h:()=>st.h.slice(),
+    snap:()=>({form:"Γ",gamma:cmp(),target:st.target,step:st.step,params:{...P}})}})());
+
+/* ---------- Α(lg·ex·bf·mt·fl·dp) ---------- */
+def("alpha",(()=>{const P={lg:.6,ex:.7,bf:.5,mt:.4,fl:.7,dp:.8};
+  const cmp=()=>+((P.lg+P.ex+P.bf+P.mt+P.fl+P.dp)/6).toFixed(2);
+  return{P,set:(k,v)=>{if(k in P){P[k]=clip(v,0,1);S.emit("alpha:set",{key:k,value:P[k]})}},
+    compute:cmp,snap:()=>({form:"Α",alpha:cmp(),...P})}})());
+
+/* ---------- logi · exchange · buffer · match · flow · dispatch ---------- */
+def("logi",(()=>{const c=[];let m=0;
+  const mv=(f,t,i)=>{const x={id:"m"+Date.now().toString(36),from:f,to:t,item:i,t:Date.now()};
+    c.push(x);if(c.length>200)c.shift();m++;S.emit("logi:move",x);
+    setTimeout(()=>S.emit("logi:arrive",x),500);return x};
+  S.on("gamma:step",d=>{if(Math.random()<.3)mv("gid",d.to,"signal")});
+  S.on("exchange:deal",d=>mv("exchange",d.to,"lot"));
+  setInterval(()=>{if(Math.random()<.4)mv(rand(G.nodes),rand(G.nodes),"flow")},4000);
+  return{cargo:()=>c.slice(-30),move:mv,moved:()=>m,
+    snap:()=>({form:"LOGI",moved:m,cargo:c.length,active:c.filter(x=>Date.now()-x.t<2000).length})}})());
+
+def("exchange",(()=>{const d=[];let v=0;
+  const nl=(u,r,de)=>+(10*u*(1+r/10)*(1+de/10)).toFixed(2);
+  const deal=(f,t,i)=>{const u=5,r=5,de=2;const p=nl(u,r,de);
+    const x={id:"d"+Date.now().toString(36),from:f,to:t,item:i,price:p,u,r,demand:de,t:Date.now()};
+    d.push(x);if(d.length>200)d.shift();v+=p;S.emit("exchange:deal",x);
+    S.emit("buffer:store",{id:x.id,item:i,price:p});return x};
+  S.on("match:found",m=>deal(m.a,m.b,m.item));
+  setInterval(()=>{if(Math.random()<.3)deal(rand(G.nodes),rand(G.nodes),"flow")},6000);
+  return{deals:()=>d.slice(-30),deal,nl,
+    snap:()=>({form:"EXCH",deals:d.length,volume:+v.toFixed(2),
+      formula:"p=10·u·(1+r/10)·(1+d/10)"})}})());
+
+def("buffer",(()=>{const s=[];let h=0,m=0;
+  const put=(id,i,p)=>{s.push({id,item:i,payload:p,t:Date.now()});
+    if(s.length>128)s.shift();return s[s.length-1]};
+  const get=i=>{const x=s.find(y=>y.item===i);if(x){h++;return x}else{m++;return null}};
+  S.on("buffer:store",d=>put(d.id,d.item,d));
+  S.on("logi:arrive",d=>put(d.id,d.item,d));
+  return{store:()=>s.slice(-30),put,get,hits:()=>h,misses:()=>m,
+    snap:()=>({form:"BUF",stored:s.length,hits:h,misses:m,size:128})}})());
+
+def("match",(()=>{const m=[];let f=0;
+  const try_=()=>{const x={id:"mt"+Date.now().toString(36),a:rand(G.nodes),b:rand(G.nodes),
+      item:rand(["signal","lot","flow","avatar"]),score:+Math.random().toFixed(2),t:Date.now()};
+    m.push(x);if(m.length>200)m.shift();f++;S.emit("match:found",x);return x};
+  setInterval(()=>{if(Math.random()<.4)try_()},5000);
+  return{matches:()=>m.slice(-30),try_,found:()=>f,
+    snap:()=>({form:"MATCH",found:f,last:m[m.length-1]||null})}})());
+
+def("flow",(()=>{const s=[];let t=0;
+  const pred=()=>{const tr=(Math.random()-.5)*.02;
+    const f={t:++t,trend:+tr.toFixed(4),flow:+(tr*100).toFixed(2),ts:Date.now()};
+    s.push(f);if(s.length>100)s.shift();S.emit("flow:tick",f);return f};
+  setInterval(()=>{if(Math.random()<.7)pred()},3000);
+  return{series:()=>s.slice(-30),predict:pred,
+    snap:()=>({form:"FLOW",ticks:t,last:s[s.length-1]||null})}})());
+
+def("dispatch",(()=>{const a=[];let d=0;
+  const act=(w,wh)=>{const x={id:"a"+Date.now().toString(36),what:w,where:wh,t:Date.now()};
+    a.push(x);if(a.length>200)a.shift();d++;S.emit("dispatch:act",x);
+    S.emit("gamma:step",{to:wh,from:"dispatch"});return x};
+  setInterval(()=>{if(Math.random()<.6)act("route",rand(G.nodes))},3500);
+  return{actions:()=>a.slice(-30),act,dispatched:()=>d,
+    snap:()=>({form:"DISP",dispatched:d,last:a[a.length-1]||null})}})());
+
+/* ---------- attention · levers · lexicon · gid · ahead ---------- */
+def("attention",(()=>{const st={level:.7,mode:"ровный",noise:.3,last:null,buffer:[]};
+  const cmp=()=>{const f=S.get("focus")?S.get("focus").level():.7;
+    const u=S.get("notifications")?S.get("notifications").unread():0;
+    const n=clip(u*.05-.15,0,1);const l=clip(f*(1-n)*.9,0,1);
+    st.level=l;st.noise=n;st.mode=l>.7?"глубокий":l>.4?"ровный":"рассеянный";
+    return{level:l,mode:st.mode,noise:n}};
+  setInterval(()=>{const c=cmp();if(c.mode!==st.last){st.last=c.mode;S.emit("attention:mode",c)}},1000);
+  return{st,compute:cmp,prioritize:items=>items.map(x=>({...x,w:(x.priority||.5)*st.level})).sort((a,b)=>b.w-a.w),
+    snap:()=>({form:"ATT",level:+st.level.toFixed(2),mode:st.mode,noise:+st.noise.toFixed(2),buffer:st.buffer.length})}})());
+
+def("levers",(()=>{const L={silence:{v:.42},lexicon:{v:.4},tempo:{v:1},depth:{v:2},filter:{v:"soft"},wave_gain:{v:.7}};
+  return{L,apply:(k,v)=>{if(!L[k])return null;L[k].v=v;S.emit("levers:apply",{key:k,value:v});return v},
+    snap:()=>({form:"LEV",...Object.fromEntries(Object.entries(L).map(([k,v])=>[k,v.v]))})}})());
+
+def("lexicon",(()=>{const b={core:["ось","центр","опора","ядро"],method:["шаг","путь","ритм","дело"],
+    ethics:["мы","связь","рядом","вместе"]};
+  const e=[];const size=()=>Object.values(b).flat().length+e.length;
+  const exp=f=>{const n=Math.round(f*10);for(let i=0;i<n;i++)e.push("·"+i);
+    S.emit("lexicon:expand",{size:size()})};
+  const pick=k=>{const p=[...b[k],...e];return p[Math.floor(Math.random()*p.length)]};
+  return{base:b,extra:e,pick,expand:exp,size,
+    snap:()=>({form:"LEX",base:Object.values(b).flat().length,extra:e.length,total:size()})}})());
+
+def("gid",(()=>{const st={target:"core",step:0,route:["core"],h:[]};
+  const step=()=>{st.step++;if(st.step>st.route.length-1){st.route=G.path("core",rand(G.nodes))||["core"];st.step=0}
+    const n=st.route[st.step]||"core";st.h.push({to:n,ts:Date.now()});
+    if(st.h.length>30)st.h.shift();S.emit("gid:step",{to:n});return n};
+  const rT=t=>{st.target=t;st.route=G.path("core",t)||["core"];st.step=0;
+    S.emit("gid:route",{target:t,path:st.route});return st.route};
+  setInterval(()=>{if(Math.random()<.3)step()},3000);
+  return{st,routeTo:rT,step,snap:()=>({form:"GID",target:st.target,step:st.step,route:st.route.length})}})());
+
+def("ahead",(()=>{const st={step:0,pulse:0};
+  setInterval(()=>{st.step++;st.pulse=+(Math.sin(st.step*.1)*.5+.5).toFixed(2);
+    if(st.step%28===0)S.emit("ahead:pulse",{alpha:S.get("alpha").compute()})},50);
+  return{st,snap:()=>({form:"AHEAD",step:st.step,alpha:S.get("alpha").compute()})}})());
+
+/* ---------- mode · git ---------- */
+def("mode",(()=>{const K="monomod.mode";
   const load=()=>{try{return localStorage.getItem(K)||"local"}catch(e){return"local"}};
   const save=m=>{try{localStorage.setItem(K,m)}catch(e){}};
-  let current=load();
-  const log=[];
-  const set=m=>{
-    current=m;save(m);
-    log.push({t:Date.now(),mode:m});
-    S.emit("mode:change",{mode:m});
-    if(m==="remote"&&S.get("git")) {
-      S.get("git").pull().then(r=>{
-        S.emit("mode:pulled",{size:r.content.length});
-      }).catch(e=>S.emit("mode:error",{err:e.message}));
-    }
-    return current;
-  };
-  const isLocal=()=>current==="local";
-  const isHybrid=()=>current==="hybrid";
-  const isRemote=()=>current==="remote";
-  return{mode:()=>current,set,isLocal,isHybrid,isRemote,
+  const log=[];let cur=load();
+  const set=m=>{cur=m;save(m);log.push({t:Date.now(),mode:m});S.emit("mode:change",{mode:m});
+    if(m==="remote"&&S.get("git"))S.get("git").pull().catch(e=>S.emit("mode:error",{err:e.message}));
+    return cur};
+  return{mode:()=>cur,set,isLocal:()=>cur==="local",isHybrid:()=>cur==="hybrid",isRemote:()=>cur==="remote",
     log:()=>log.slice(-10),
-    snap:()=>({form:"MODE",current,localStorage:!!window.localStorage,
-      origin:location.origin,hash:location.hash||""})};
-})());
+    snap:()=>({form:"MODE",current:cur,origin:location.origin,localStorage:!!window.localStorage})}})());
 
-/* ============================================================
-   M.GIT · GitHub API + локальный режим
-   ============================================================ */
-def("git",(()=>{
-  const K="monomod.github";
+def("git",(()=>{const K="monomod.github";
   const load=()=>{try{return JSON.parse(localStorage.getItem(K))||{}}catch(e){return{}}};
   const save=c=>{try{localStorage.setItem(K,JSON.stringify(c))}catch(e){}};
-  const cfg=Object.assign({
-    owner:"",repo:"",path:"index.html",token:"",branch:"main",hook:"",
-    commit_msg:"MONOMOD update"
-  },load());
-
-  const log=[];let lastStatus="idle",lastAt=null,progress=0;
+  const cfg=Object.assign({owner:"",repo:"",path:"index.html",token:"",branch:"main",hook:"",
+    commit_msg:"MONOMOD update"},load());
+  const log=[];let ls="idle",la=null,pr=0;
   const setCfg=(k,v)=>{cfg[k]=v;save(cfg);return cfg};
-  const cfgSnap=()=>({...cfg,token:cfg.token?"•".repeat(6)+cfg.token.slice(-4):""});
+  const setPr=v=>{pr=clip(v,0,1);S.emit("git:progress",{progress:pr})};
 
-  const setProgress=(v)=>{progress=clip(v,0,1);S.emit("git:progress",{progress})};
-
-  /* --- pull --- */
-  async function pull(path){
-    if(!cfg.owner||!cfg.repo) throw new Error("owner/repo не заданы");
-    setProgress(0.1);
-    const p=path||cfg.path;
-    const url=`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${p}?ref=${cfg.branch}`;
+  async function pull(p){
+    if(!cfg.owner||!cfg.repo)throw new Error("owner/repo не заданы");
+    setPr(.1);const pt=p||cfg.path;
+    const u=`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${pt}?ref=${cfg.branch}`;
     const h={Accept:"application/vnd.github+json"};
-    if(cfg.token) h.Authorization="Bearer "+cfg.token;
-    const r=await fetch(url,{headers:h});
-    setProgress(0.5);
-    if(!r.ok) throw new Error("pull "+r.status);
+    if(cfg.token)h.Authorization="Bearer "+cfg.token;
+    const r=await fetch(u,{headers:h});setPr(.5);
+    if(!r.ok)throw new Error("pull "+r.status);
     const j=await r.json();
-    const content=decodeURIComponent(escape(atob(j.content.replace(/\n/g,""))));
-    log.push({op:"pull",path:p,ts:Date.now(),ok:true,size:content.length});
+    const c=decodeURIComponent(escape(atob(j.content.replace(/\n/g,""))));
+    log.push({op:"pull",path:pt,ts:Date.now(),ok:true,size:c.length});
     if(log.length>50)log.shift();
-    lastStatus="pulled";lastAt=Date.now();setProgress(1);
-    S.emit("git:pull",{path:p,size:content.length});
-    return {content, sha:j.sha};
+    ls="pulled";la=Date.now();setPr(1);
+    S.emit("git:pull",{path:pt,size:c.length});
+    return{content:c,sha:j.sha};
   }
 
-  /* --- push --- */
-  async function push(content, path, message){
-    if(!cfg.owner||!cfg.repo) throw new Error("owner/repo не заданы");
-    if(!cfg.token) throw new Error("токен не задан");
-    setProgress(0.1);
-    const p=path||cfg.path;
-    const url=`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${p}`;
-
+  async function push(c,p,m){
+    if(!cfg.owner||!cfg.repo)throw new Error("owner/repo не заданы");
+    if(!cfg.token)throw new Error("токен не задан");
+    setPr(.1);const pt=p||cfg.path;
+    const u=`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${pt}`;
     let sha=null;
-    try{
-      const r0=await fetch(url+"?ref="+cfg.branch,{headers:{
-        Authorization:"Bearer "+cfg.token,Accept:"application/vnd.github+json"}});
-      if(r0.ok) sha=(await r0.json()).sha;
-    }catch(e){}
-    setProgress(0.4);
-
-    const body={
-      message: message||cfg.commit_msg,
-      content: btoa(unescape(encodeURIComponent(content))),
-      branch: cfg.branch
-    };
-    if(sha) body.sha=sha;
-
-    const r=await fetch(url,{
-      method:"PUT",
-      headers:{
-        Authorization:"Bearer "+cfg.token,
-        Accept:"application/vnd.github+json",
-        "Content-Type":"application/json"
-      },
-      body: JSON.stringify(body)
-    });
-    setProgress(0.8);
+    try{const r0=await fetch(u+"?ref="+cfg.branch,{headers:{
+      Authorization:"Bearer "+cfg.token,Accept:"application/vnd.github+json"}});
+      if(r0.ok)sha=(await r0.json()).sha}catch(e){}
+    setPr(.4);
+    const b={message:m||cfg.commit_msg,content:btoa(unescape(encodeURIComponent(c))),branch:cfg.branch};
+    if(sha)b.sha=sha;
+    const r=await fetch(u,{method:"PUT",headers:{
+      Authorization:"Bearer "+cfg.token,Accept:"application/vnd.github+json",
+      "Content-Type":"application/json"},body:JSON.stringify(b)});
+    setPr(.8);
     const j=await r.json();
-    if(!r.ok){
-      lastStatus="error";setProgress(0);
-      S.emit("git:error",{status:r.status,msg:j.message});
-      throw new Error("push "+r.status+" · "+(j.message||""));
-    }
-
-    log.push({op:"push",path:p,ts:Date.now(),ok:true,sha:j.content&&j.content.sha,size:content.length});
+    if(!r.ok){ls="error";setPr(0);S.emit("git:error",{status:r.status,msg:j.message});
+      throw new Error("push "+r.status+" · "+(j.message||""))}
+    log.push({op:"push",path:pt,ts:Date.now(),ok:true,sha:j.content&&j.content.sha,size:c.length});
     if(log.length>50)log.shift();
-    lastStatus="pushed";lastAt=Date.now();setProgress(1);
-    S.emit("git:push",{path:p,sha:j.content&&j.content.sha,size:content.length});
+    ls="pushed";la=Date.now();setPr(1);
+    S.emit("git:push",{path:pt,sha:j.content&&j.content.sha,size:c.length});
     return j;
   }
 
-  /* --- snapshot текущей страницы --- */
   function snapshot(){
-    /* Убираем временные пометки .on у вкладок, чтобы в репо попал чистый файл */
-    const clone=document.documentElement.cloneNode(true);
-    clone.querySelectorAll(".p").forEach(p=>p.classList.remove("on"));
-    clone.querySelectorAll("#tabs button").forEach(b=>b.classList.remove("on"));
-    const first=clone.querySelector(".p"); if(first) first.classList.add("on");
-    const firstBtn=clone.querySelector("#tabs button"); if(firstBtn) firstBtn.classList.add("on");
-    return "<!DOCTYPE html>\n"+clone.outerHTML;
+    const cl=document.documentElement.cloneNode(true);
+    cl.querySelectorAll(".p").forEach(p=>p.classList.remove("on"));
+    cl.querySelectorAll("#tabs button").forEach(b=>b.classList.remove("on"));
+    const f=cl.querySelector(".p");if(f)f.classList.add("on");
+    const fb=cl.querySelector("#tabs button");if(fb)fb.classList.add("on");
+    return "<!DOCTYPE html>\n"+cl.outerHTML;
   }
-  const pushSelf=(msg)=>push(snapshot(),cfg.path,msg||cfg.commit_msg);
+  const pushSelf=m=>push(snapshot(),cfg.path,m||cfg.commit_msg);
 
-  /* --- deploy hook --- */
   async function deploy(){
-    if(!cfg.hook) throw new Error("Deploy Hook URL не задан");
-    setProgress(0.3);
+    if(!cfg.hook)throw new Error("Deploy Hook URL не задан");
+    setPr(.3);
     const r=await fetch(cfg.hook,{method:"POST"});
     log.push({op:"deploy",ts:Date.now(),ok:r.ok,status:r.status});
     if(log.length>50)log.shift();
-    lastStatus=r.ok?"deploying":"error";lastAt=Date.now();setProgress(1);
+    ls=r.ok?"deploying":"error";la=Date.now();setPr(1);
     S.emit("git:deploy",{ok:r.ok,status:r.status});
     return r.ok;
   }
 
-  /* --- ship: push + deploy --- */
-  async function ship(message){
-    const p=await pushSelf(message||"MONOMOD ship "+new Date().toISOString());
-    let d=null;
-    if(cfg.hook){ try{ d=await deploy() }catch(e){} }
-    return {pushed:true,deployed:d,sha:p.content&&p.content.sha};
+  async function ship(m){
+    const p=await pushSelf(m||"MONOMOD ship "+new Date().toISOString());
+    let d=null;if(cfg.hook){try{d=await deploy()}catch(e){}}
+    return{pushed:true,deployed:d,sha:p.content&&p.content.sha};
   }
 
-  /* --- ping --- */
   async function ping(){
-    try{
-      const r=await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}`,{
-        headers: cfg.token ? {Authorization:"Bearer "+cfg.token,Accept:"application/vnd.github+json"} : {}
-      });
-      if(!r.ok) return {ok:false,status:r.status};
-      const j=await r.json();
-      lastStatus="ok";lastAt=Date.now();
-      return {ok:true,repo:j.full_name,private:j.private,default_branch:j.default_branch};
-    }catch(e){ return {ok:false,error:e.message} }
+    try{const r=await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}`,{
+      headers:cfg.token?{Authorization:"Bearer "+cfg.token,Accept:"application/vnd.github+json"}:{}});
+      if(!r.ok)return{ok:false,status:r.status};
+      const j=await r.json();ls="ok";la=Date.now();
+      return{ok:true,repo:j.full_name,private:j.private,default_branch:j.default_branch};
+    }catch(e){return{ok:false,error:e.message}}
   }
 
-  return {cfg,setCfg,cfgSnap,pull,push,pushSelf,deploy,ship,ping,snapshot,
-    log:()=>log.slice().reverse(),
-    progress:()=>progress,
-    status:()=>({lastStatus,lastAt,ops:log.length,progress}),
-    snap:()=>({form:"GIT",owner:cfg.owner||"—",repo:cfg.repo||"—",
-      path:cfg.path,branch:cfg.branch,
-      token:cfg.token?"••••"+cfg.token.slice(-4):"—",
-      hook:cfg.hook?"set":"—",
-      status:lastStatus,ops:log.length,progress:+progress.toFixed(2)})};
-})());
+  return{cfg,setCfg,pull,push,pushSelf,deploy,ship,ping,snapshot,
+    log:()=>log.slice().reverse(),progress:()=>pr,
+    status:()=>({lastStatus:ls,lastAt:la,ops:log.length,progress:pr}),
+    snap:()=>({form:"GIT",owner:cfg.owner||"—",repo:cfg.repo||"—",path:cfg.path,
+      branch:cfg.branch,token:cfg.token?"••••"+cfg.token.slice(-4):"—",
+      hook:cfg.hook?"set":"—",status:ls,ops:log.length,progress:+pr.toFixed(2)})}})());
+
+/* ---------- HOME ---------- */
+def("home",(()=>{const plan=()=>[
+    {t:"сейчас",title:"план на день",done:false},
+    {t:"сейчас",title:"разобрать "+(S.get("notifications")?S.get("notifications").unread():0)+" уведомлений",done:false},
+    {t:"через час",title:"конверсия: 1.Кортеж → 10.JSON",done:false},
+    {t:"днём",title:"путешествие в мир Исследователя",done:false},
+    {t:"вечером",title:"зафиксировать Ω=0.42",done:false}
+  ];
+  return{plan,snap:()=>({form:"HOME",plan:plan().length,mode:S.get("mode").mode(),git:S.get("git").status().lastStatus})}})());
+
+/* ---------- заглушки для целостности графа ---------- */
+G.nodes.forEach(id=>{if(!S.get(id))def(id,{snap:()=>({form:id})})});
+
+/* ---------- подписки ядра ---------- */
+S.on("git:push",()=>S.get("omega").lock("git"));
+S.on("mode:change",m=>S.emit("mono",{text:"mode: "+m.mode}));
+S.on("gamma:step",d=>{if(Math.random()<.3)S.get("logi").move("gid",d.to,"signal")});
+S.on("dispatch:act",a=>S.get("logi").move("dispatch",a.where,"order"));
+S.on("match:found",m=>S.get("exchange").deal(m.a,m.b,m.item));
+S.on("exchange:deal",d=>S.get("buffer").put(d.id,d.item,d));
+S.on("logi:arrive",d=>S.get("buffer").put(d.id,d.item,d));
+S.on("lambda:set",d=>{if(d.key==="l")S.get("lexicon").expand(d.value)});
+
+/* ---------- ПУБЛИЧНЫЙ API ---------- */
+window.MONOMOD={
+  G,S,
+  report:()=>({
+    M:"v10.2",
+    G:{n:G.nodes.length,m:G.edges.length},
+    Ψ:S.get("psi").snap(),
+    Ω:S.get("omega").snap(),
+    ∮:S.get("loop").snap(),
+    Λ:S.get("lambda").snap(),
+    Γ:S.get("gamma").snap(),
+    Α:S.get("alpha").snap(),
+    HOME:S.get("home").snap(),
+    MODE:S.get("mode").snap(),
+    GIT:S.get("git").snap(),
+    registered:S.list().length,
+    listeners:S.snap().listeners
+  })
+};
 
 /* ============================================================
-   UI
+   UI · 68 вкладок + рендеры
    ============================================================ */
 const $=id=>document.getElementById(id);
 const stg=$("stg");
@@ -543,6 +564,7 @@ document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
   S.emit("ui:tab",{id:b.dataset.t});renderTab(b.dataset.t);
 });
 
+/* ---------- рендер вкладок ---------- */
 function renderTab(t){
   const el=$("p-"+t);
   switch(t){
@@ -565,17 +587,20 @@ function renderTab(t){
     case "lexicon": renderLexicon(el); break;
     case "gid": renderGid(el); break;
     case "logi": renderLogi(el); break;
+    case "exchange": renderExchange(el); break;
+    case "buffer": renderBuffer(el); break;
+    case "match": renderMatch(el); break;
     case "flow": renderFlow(el); break;
     case "dispatch": renderDispatch(el); break;
     default: renderSnap(el,t);
   }
 }
 
-/* === HOME === */
+/* HOME */
 function renderHome(el){
-  const gd=S.get("gid"),lv=S.get("levers"),plan=S.get("home").plan(),
-    mode=S.get("mode").mode(),gitStatus=S.get("git").status();
-  el.innerHTML=hdr("HOME","["+mode+" · "+gitStatus.lastStatus+"]")+
+  const gd=S.get("gid"),lv=S.get("lambda"),plan=S.get("home").plan(),
+    mode=S.get("mode").mode(),gs=S.get("git").status();
+  el.innerHTML=hdr("HOME","["+mode+" · "+gs.lastStatus+"]")+
     `<div id="home-grid">
       <div class="home-block"><h3>· Режим</h3>
         <div class="r"><span class="k">текущий</span><span class="tag ${mode==='local'?'k':mode==='hybrid'?'w':'p'}">${mode}</span></div>
@@ -588,16 +613,16 @@ function renderHome(el){
         `<div class="r"><span><span class="tag">${p.t}</span> ${p.title}</span><span class="ok">○</span></div>`).join("")}</div>
       <div class="home-block"><h3>· Git</h3>
         <div class="r"><span class="k">repo</span><span>${S.get("git").cfg.owner||"—"}/${S.get("git").cfg.repo||"—"}</span></div>
-        <div class="r"><span class="k">status</span><span class="${gitStatus.lastStatus==='pushed'||gitStatus.lastStatus==='ok'?'ok':''}">${gitStatus.lastStatus}</span></div>
-        <div class="r"><span class="k">ops</span><span>${gitStatus.ops}</span></div>
+        <div class="r"><span class="k">status</span><span class="${gs.lastStatus==='pushed'||gs.lastStatus==='ok'?'ok':''}">${gs.lastStatus}</span></div>
+        <div class="r"><span class="k">ops</span><span>${gs.ops}</span></div>
         <div style="margin-top:6px"><button class="act primary" onclick="document.querySelector('#tabs button[data-t=git]').click()">→ git</button></div></div>
       <div class="home-block"><h3>· Гид</h3>
         <div class="r"><span class="k">цель</span><span>${gd.st.target}</span></div>
-        <div class="r"><span class="k">Γ</span><span>${gd.Γ().toFixed(2)}</span></div>
+        <div class="r"><span class="k">Γ</span><span>${gd.compute().toFixed(2)}</span></div>
         <div style="margin-top:6px"><button class="act" onclick="S.get('gid').step();renderTab('home')">шаг</button></div></div>
       <div class="home-block"><h3>· Λ · состояния</h3>
-        <div class="r"><span class="k">устойчивость</span><span>${lv.stability().toFixed(2)}</span></div>
-        <div class="r"><span class="k">внимание</span><span>${S.get("attention").state().level.toFixed(2)} · ${S.get("attention").state().mode}</span></div></div>
+        <div class="r"><span class="k">устойчивость</span><span>${lv.compute().toFixed(2)}</span></div>
+        <div class="r"><span class="k">внимание</span><span>${S.get("attention").st.level.toFixed(2)} · ${S.get("attention").st.mode}</span></div></div>
       <div class="home-block"><h3>· Связи</h3>
         <div class="r"><span class="k">узлов</span><span>${G.nodes.length}</span></div>
         <div class="r"><span class="k">связей</span><span>${G.edges.length}</span></div>
@@ -605,11 +630,11 @@ function renderHome(el){
     </div>`;
 }
 
-/* === MODE === */
+/* MODE */
 function renderMode(el){
   const m=S.get("mode");
   el.innerHTML=hdr("MODE · ЛОКАЛЬНЫЙ РЕЖИМ","[local · hybrid · remote]")+
-    `<div class="pn"><h2>· ТЕКУЩИЙ РЕЖИМ</h2>
+    `<div class="pn"><h2>· ТЕКУЩИЙ</h2>
       <div class="r"><span class="k">mode</span><span class="tag ${m.mode()==='local'?'k':m.mode()==='hybrid'?'w':'p'}">${m.mode()}</span></div>
       <div class="r"><span class="k">origin</span><span>${location.origin}</span></div>
       <div class="r"><span class="k">path</span><span>${location.pathname}</span></div>
@@ -618,83 +643,70 @@ function renderMode(el){
         <button class="act ${m.mode()==='local'?'on':''}" onclick="S.get('mode').set('local');renderTab('mode')">local</button>
         <button class="act ${m.mode()==='hybrid'?'on':''}" onclick="S.get('mode').set('hybrid');renderTab('mode')">hybrid</button>
         <button class="act ${m.mode()==='remote'?'on':''}" onclick="S.get('mode').set('remote');renderTab('mode')">remote</button></div></div>
-
      <div class="pn"><h2>· ЧТО ЗНАЧИТ КАЖДЫЙ</h2>
        <div class="r"><span class="k">local</span><span>всё в localStorage, github не трогаем</span></div>
        <div class="r"><span class="k">hybrid</span><span>local + pull по кнопке</span></div>
        <div class="r"><span class="k">remote</span><span>pull при старте + push в конце</span></div></div>
-
-     <div class="pn"><h2>· ЛОКАЛЬНОЕ ХРАНИЛИЩЕ</h2>
+     <div class="pn"><h2>· LOCALSTORAGE</h2>
        <div class="r"><span class="k">monomod.mode</span><span>${localStorage.getItem("monomod.mode")||"—"}</span></div>
        <div class="r"><span class="k">monomod.github</span><span>${localStorage.getItem("monomod.github")?"есть":"—"}</span></div>
        <div style="margin-top:8px">
          <button class="act danger" onclick="localStorage.clear();location.reload()">очистить всё</button>
-         <button class="act" onclick="location.reload()">перезагрузить</button></div>
-       <div style="margin-top:6px;color:var(--dm);font-size:10px">Очистка сбросит mode и конфиг git. Токен тоже удалится.</div></div>
-
+         <button class="act" onclick="location.reload()">перезагрузить</button></div></div>
      <div class="pn"><h2>· ЛОГ</h2>${m.log().map(x=>
        `<div class="log-line"><span>${x.mode}</span><span>${new Date(x.t).toTimeString().slice(0,8)}</span></div>`).join("")||"· пусто"}</div>`;
 }
 
-/* === GIT === */
+/* GIT */
 function renderGit(el){
-  const g=S.get("git"); const c=g.cfg; const s=g.status();
+  const g=S.get("git");const c=g.cfg;const s=g.status();
   const safe=v=>v||"";
   el.innerHTML=hdr("GIT · СБОРКА И РЕЛИЗ","[pull · push · ship · deploy]")+
-
     `<div class="pn"><h2>· РЕЖИМ</h2>
       <div class="r"><span class="k">текущий</span><span class="tag ${S.get("mode").mode()==='local'?'k':S.get("mode").mode()==='hybrid'?'w':'p'}">${S.get("mode").mode()}</span></div>
       <div style="margin-top:6px">
         <button class="act" onclick="S.get('mode').set('local');renderTab('git')">local</button>
         <button class="act" onclick="S.get('mode').set('hybrid');renderTab('git')">hybrid</button>
         <button class="act" onclick="S.get('mode').set('remote');renderTab('git')">remote</button></div></div>
-
-    <div class="pn"><h2>· СОЕДИНЕНИЕ</h2>
-      <div class="r"><span class="k">owner</span><input id="gt-o" value="${safe(c.owner)}" placeholder="логин" style="width:60%"></div>
-      <div class="r"><span class="k">repo</span><input id="gt-r" value="${safe(c.repo)}" placeholder="имя репо" style="width:60%"></div>
-      <div class="r"><span class="k">path</span><input id="gt-p" value="${safe(c.path)}" placeholder="index.html" style="width:60%"></div>
-      <div class="r"><span class="k">branch</span><input id="gt-b" value="${safe(c.branch)}" placeholder="main" style="width:60%"></div>
-      <div class="r"><span class="k">token</span><input id="gt-t" type="password" value="${safe(c.token)}" placeholder="ghp_... или github_pat_..." style="width:60%"></div>
-      <div style="margin-top:8px"><button class="act" id="gt-save">сохранить</button>
-        <button class="act" id="gt-ping">проверить</button>
-        <span id="gt-ping-out" style="color:var(--dm);font-size:10px;margin-left:6px"></span></div></div>
-
-    <div class="pn"><h2>· СБОРКА / РЕЛИЗ</h2>
-      <div class="r"><span class="k">commit message</span><input id="gt-m" value="${safe(c.commit_msg)}" style="width:60%"></div>
-      <div class="prog"><span id="gt-prog"></span></div>
-      <div style="margin-top:8px">
-        <button class="act" id="gt-pull">⬇ pull</button>
-        <button class="act" id="gt-push">⬆ push (self)</button>
-        <button class="act primary" id="gt-ship">▶ ship (push+deploy)</button></div>
-      <div id="gt-out" style="color:var(--dm);font-size:10px;margin-top:8px;white-space:pre-wrap"></div></div>
-
-    <div class="pn"><h2>· RENDER DEPLOY HOOK</h2>
-      <div class="r"><span class="k">hook URL</span><input id="gt-h" value="${safe(c.hook)}" placeholder="https://api.render.com/deploy/..." style="width:60%"></div>
-      <div style="margin-top:8px"><button class="act" id="gt-h-save">сохранить hook</button>
-        <button class="act" id="gt-deploy">deploy</button></div></div>
-
-    <div class="pn"><h2>· СТАТУС · ХОД РАБОТ</h2>
-      <div class="r"><span class="k">lastStatus</span><span class="${['pushed','ok','pulled','deploying'].includes(s.lastStatus)?'ok':s.lastStatus==='error'?'':''}">${s.lastStatus}</span></div>
-      <div class="r"><span class="k">lastAt</span><span>${s.lastAt?new Date(s.lastAt).toTimeString().slice(0,8):"—"}</span></div>
-      <div class="r"><span class="k">операций</span><span>${s.ops}</span></div>
-      <div class="r"><span class="k">прогресс</span><span>${(s.progress*100).toFixed(0)}%</span></div></div>
-
-    <div class="pn"><h2>· ЛОГ ОПЕРАЦИЙ</h2>${
-      g.log().map(x=>`<div class="log-line"><span class="${x.ok?'ok':''}">${x.op}</span><span>${x.path||""} ${x.size||""}b · ${new Date(x.ts).toTimeString().slice(0,8)} ${x.ok?'✓':'✕'}</span></div>`).join("")||"· пусто"
-    }</div>
-
-    <div class="pn" style="color:var(--dm);font-size:10px">
-      <b style="color:var(--tl)">как получить токен:</b> github.com/settings/tokens → Fine-grained →
-      Contents: Read and write. Хранится только в браузере.
-    </div>`;
+     <div class="pn"><h2>· СОЕДИНЕНИЕ</h2>
+       <div class="r"><span class="k">owner</span><input id="gt-o" value="${safe(c.owner)}" placeholder="логин" style="width:60%"></div>
+       <div class="r"><span class="k">repo</span><input id="gt-r" value="${safe(c.repo)}" placeholder="имя репо" style="width:60%"></div>
+       <div class="r"><span class="k">path</span><input id="gt-p" value="${safe(c.path)}" placeholder="index.html" style="width:60%"></div>
+       <div class="r"><span class="k">branch</span><input id="gt-b" value="${safe(c.branch)}" placeholder="main" style="width:60%"></div>
+       <div class="r"><span class="k">token</span><input id="gt-t" type="password" value="${safe(c.token)}" placeholder="ghp_..." style="width:60%"></div>
+       <div style="margin-top:8px"><button class="act" id="gt-save">сохранить</button>
+         <button class="act" id="gt-ping">проверить</button>
+         <span id="gt-ping-out" style="color:var(--dm);font-size:10px;margin-left:6px"></span></div></div>
+     <div class="pn"><h2>· СБОРКА / РЕЛИЗ</h2>
+       <div class="r"><span class="k">commit message</span><input id="gt-m" value="${safe(c.commit_msg)}" style="width:60%"></div>
+       <div class="prog"><span id="gt-prog"></span></div>
+       <div style="margin-top:8px">
+         <button class="act" id="gt-pull">⬇ pull</button>
+         <button class="act" id="gt-push">⬆ push</button>
+         <button class="act primary" id="gt-ship">▶ ship</button></div>
+       <div id="gt-out" style="color:var(--dm);font-size:10px;margin-top:8px;white-space:pre-wrap"></div></div>
+     <div class="pn"><h2>· RENDER DEPLOY HOOK</h2>
+       <div class="r"><span class="k">hook URL</span><input id="gt-h" value="${safe(c.hook)}" placeholder="https://api.render.com/deploy/..." style="width:60%"></div>
+       <div style="margin-top:8px"><button class="act" id="gt-h-save">сохранить hook</button>
+         <button class="act" id="gt-deploy">deploy</button></div></div>
+     <div class="pn"><h2>· СТАТУС · ХОД РАБОТ</h2>
+       <div class="r"><span class="k">lastStatus</span><span class="${['pushed','ok','pulled','deploying'].includes(s.lastStatus)?'ok':''}">${s.lastStatus}</span></div>
+       <div class="r"><span class="k">lastAt</span><span>${s.lastAt?new Date(s.lastAt).toTimeString().slice(0,8):"—"}</span></div>
+       <div class="r"><span class="k">операций</span><span>${s.ops}</span></div>
+       <div class="r"><span class="k">прогресс</span><span>${(s.progress*100).toFixed(0)}%</span></div></div>
+     <div class="pn"><h2>· ЛОГ ОПЕРАЦИЙ</h2>${
+       g.log().map(x=>`<div class="log-line"><span class="${x.ok?'ok':''}">${x.op}</span><span>${x.path||""} ${x.size||""}b · ${new Date(x.ts).toTimeString().slice(0,8)} ${x.ok?'✓':'✕'}</span></div>`).join("")||"· пусто"
+     }</div>
+     <div class="pn" style="color:var(--dm);font-size:10px">
+       <b style="color:var(--tl)">токен:</b> github.com/settings/tokens → Contents: Read and write.
+       Хранится только в браузере.</div>`;
 
   const bind=(id,key)=>$(id).oninput=e=>g.setCfg(key,e.target.value);
   bind("gt-o","owner");bind("gt-r","repo");bind("gt-p","path");bind("gt-b","branch");
   bind("gt-t","token");bind("gt-m","commit_msg");bind("gt-h","hook");
 
   const out=m=>{const o=$("gt-out");if(o)o.textContent=m};
-  const updateProg=()=>{const p=$("gt-prog");if(p){const v=g.progress();p.style.width=(v*100)+"%"}};
-  S.on("git:progress",updateProg);
+  S.on("git:progress",()=>{const p=$("gt-prog");if(p)p.style.width=(g.progress()*100)+"%"});
 
   $("gt-save").onclick=()=>{out("✓ сохранено");renderTab("git")};
   $("gt-ping").onclick=async()=>{const o=$("gt-ping-out");o.textContent="…";
@@ -715,11 +727,11 @@ function renderGit(el){
     catch(e){out("✕ "+e.message)}};
 }
 
-/* === CORE === */
+/* CORE */
 function renderCore(el){
-  const mods=["G","Ψ","Ω","∮","S","OBS","WIT","PRT","FMT","CV","ATT","LEV","LEX","GID",
+  const mods=["G","Ψ","Ω","∮","Λ","Γ","Α","S","OBS","WIT","PRT","FMT","CV","ATT","LEV","LEX","GID",
     "LOGI","EXCH","BUF","MATCH","FLOW","DISP","HOME","MODE","GIT"];
-  el.innerHTML=hdr("CORE","[68 узлов · 194 связи · 23 модуля]")+
+  el.innerHTML=hdr("CORE","[68 узлов · 194 связи · 26 модулей]")+
     `<div class="pn"><h2>· МОДУЛИ</h2><div>${mods.map(m=>`<span class="tag k">M.${m}</span>`).join("")}</div></div>
      <div class="pn"><h2>· ТОП-20 СВЯЗЕЙ</h2><div id="cr-e"></div></div>
      <div class="pn"><h2>· ДЕЙСТВИЯ</h2>
@@ -735,153 +747,137 @@ function renderCore(el){
 let mapFilter=null;
 function renderMap(el){
   el.innerHTML=hdr("MAP · 3 ОРБИТЫ","[клик группа → фильтр]")+
-    `<div class="pn" style="margin-bottom:8px">
-       <h2>· ГРУППЫ</h2>
+    `<div class="pn" style="margin-bottom:8px"><h2>· ГРУППЫ</h2>
        <button class="act" onclick="mapFilter=null;renderTab('map')">все</button>
-       ${Object.keys(G.GROUPS).map(g=>`<button class="act ${mapFilter===g?'on':''}" onclick="mapFilter='${g}';renderTab('map')">${g}</button>`).join("")}
-     </div>
+       ${Object.keys(G.GR).map(g=>`<button class="act ${mapFilter===g?'on':''}" onclick="mapFilter='${g}';renderTab('map')">${g}</button>`).join("")}</div>
      <div class="pn"><canvas id="cv-map" width="900" height="700"></canvas></div>`;
   requestAnimationFrame(()=>drawMap());
 }
 function drawMap(){
-  const cv=$("cv-map"); if(!cv) return;
-  const x=cv.getContext("2d"), w=cv.width, h=cv.height, cx=w/2, cy=h/2;
-  x.fillStyle="#0d0a0c"; x.fillRect(0,0,w,h);
-  const R1=Math.min(w,h)*.18, R2=Math.min(w,h)*.30, R3=Math.min(w,h)*.42;
-  x.strokeStyle="#221c1f"; x.lineWidth=.5;
+  const cv=$("cv-map");if(!cv)return;
+  const x=cv.getContext("2d"),w=cv.width,h=cv.height,cx=w/2,cy=h/2;
+  x.fillStyle="#0d0a0c";x.fillRect(0,0,w,h);
+  const R1=Math.min(w,h)*.18,R2=Math.min(w,h)*.30,R3=Math.min(w,h)*.42;
+  x.strokeStyle="#221c1f";x.lineWidth=.5;
   [R1,R2,R3].forEach(r=>{x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke()});
-  const gc={core:"#4dd0c7",ahead:"#f59e0b",guide:"#a78bfa",observe:"#ef4444",gen:"#10b981",social:"#e8c39e",git:"#a78bfa",base:"#3a3236"};
-  const byGroup={};
-  G.nodes.forEach(id=>{const g=G.group(id);if(!byGroup[g])byGroup[g]=[];if(id!=="core")byGroup[g].push(id)});
+  const gc={core:"#4dd0c7",ahead:"#f59e0b",guide:"#a78bfa",observe:"#ef4444",
+    gen:"#10b981",social:"#e8c39e",git:"#a78bfa",mode:"#e8c39e",base:"#3a3236"};
+  const byG={};G.nodes.forEach(id=>{const g=G.gp(id);if(!byG[g])byG[g]=[];if(id!=="core")byG[g].push(id)});
   const pos={core:{x:cx,y:cy}};
-  const order=["git","ahead","guide","observe","gen","social","base"];
-  order.forEach((g,gi)=>{
-    const arr=byGroup[g]||[]; if(!arr.length) return;
-    const r=[R1,R1,R1,R2,R2,R3,R3][gi]||R3;
+  const order=["git","mode","ahead","guide","observe","gen","social","base"];
+  order.forEach((g,gi)=>{const arr=byG[g]||[];if(!arr.length)return;
+    const r=[R1,R1,R1,R1,R2,R2,R3,R3][gi]||R3;
     arr.forEach((id,i)=>{const a=(i/arr.length)*Math.PI*2-Math.PI/2+gi*.3;
-      pos[id]={x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r}});
-  });
-  const visible=id=>!mapFilter||G.group(id)===mapFilter||id==="core";
-  G.edges.forEach(([a,b,w])=>{
-    if(!visible(a)||!visible(b)) return;
-    const A=pos[a],B=pos[b]; if(!A||!B) return;
-    const ag=G.group(a),bg=G.group(b);
+      pos[id]={x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r}})});
+  const vis=id=>!mapFilter||G.gp(id)===mapFilter||id==="core";
+  G.edges.forEach(([a,b,w])=>{if(!vis(a)||!vis(b))return;
+    const A=pos[a],B=pos[b];if(!A||!B)return;
+    const ag=G.gp(a),bg=G.gp(b);
     const col=(a==="core"||b==="core")?"rgba(77,208,199,"+Math.min(.7,w*.35)+")":
       (ag===bg)?`${gc[ag]||"#3a3236"}55`:"rgba(58,50,54,.5)";
     x.strokeStyle=col;x.lineWidth=Math.min(1.5,w*.25);
-    x.beginPath();x.moveTo(A.x,A.y);x.lineTo(B.x,B.y);x.stroke();
-  });
-  G.nodes.forEach(id=>{
-    if(!visible(id)) return;
-    const p=pos[id],g=G.group(id),ic=id==="core";
-    const deg=G.degree(id);const r=ic?20:Math.max(3,Math.min(9,3+deg*.5));
-    const col=gc[g]||"#3a3236";
-    x.fillStyle="#0d0a0c";x.strokeStyle=col;x.lineWidth=ic?2:1.2;
-    x.beginPath();x.arc(p.x,p.y,r,0,Math.PI*2);x.fill();x.stroke();
-    const key=["core","git","gid","logi","exchange","buffer","match","flow","dispatch","attention","levers","lexicon"].includes(id);
+    x.beginPath();x.moveTo(A.x></,A.y);x.lineTo(B.x,B.y);x.stroke()div});
+  G.nodes.forEach(id=>{if(!vis(id))return;
+    const p=pos>`;
+[id],g=G}
+.gp(id),ic=id==function="core";
+    const render deg=G.dg(id);const r=Gic?20:Math.max(3id,Math.min(9,3+deg(el*.5));
+    const col=gc){
+[g]||"#3a3236";
+     x.fillStyle="#0d0a0 constc";x.strokeStyle=col;x.line gWidth=ic?2:1.2;
+   =S x.beginPath();x.arc(p.x.get,p.y,r,0,Math.PI*2);x.fill();x.stroke();
+    const key=["core","git","mode","gid","logi","exchange","buffer","match","flow","dispatch","attention","levers","lexicon"].includes(id);
     if(ic||key||deg>=8){x.fillStyle=col;x.font=(ic?"bold 11px":"9px")+" Courier New";
-      x.textAlign="center";x.textBaseline="middle";x.fillText(ic?"CORE":id,p.x,p.y+(ic?0:r+9))}
-  });
+      x.textAlign="center";x.textBaseline="middle";
+      x.fillText(ic?"CORE":id,p.x,p.y+(ic?0:r+9))}});
 }
 
 /* CHAT */
 function renderChat(el){
-  const h=S.get("chat").log();
+  const h=S.get("chat")?S.get("chat").log():[];
   el.innerHTML=hdr("CHAT","[gen_text]")+
     `<div class="pn" id="ch-l" style="height:260px;overflow-y:auto"></div>
      <div style="display:flex;gap:6px;margin-top:8px"><input id="ch-i" placeholder="→" style="flex:1"><button class="act" id="ch-s">send</button></div>
      <div class="pn" style="margin-top:8px"><h2>· БЫСТРО</h2>
        <button class="act" onclick="document.getElementById('ch-i').value='привет';document.getElementById('ch-s').click()">привет</button>
-       <button class="act" onclick="document.getElementById('ch-i').value='план';document.getElementById('ch-s').click()">план</button>
-       <button class="act" onclick="document.getElementById('ch-i').value='git';document.getElementById('ch-s').click()">git</button></div>`;
-  $("ch-l").innerHTML=h.map(m=>`<div class="msg ${m.w==="you"?"you":""}"><span class="who">${m.w}</span><span class="ts">${new Date(m.ts).toTimeString().slice(0,8)}</span><div>${m.t}</div></div>`).join("");
+       <button class="act" onclick="document.getElementById('ch-i').value='план';document.getElementById('ch-s').click()">план</button></div>`;
+  $("ch-l").innerHTML=h.map(m=>`<div class="msg ${m.w==="you"?"you":""}"><span class="who">${m.w}</span><span class="ts">${new Date(m.ts).toTimeString().slice(0,8)}</span><div>${m.t}</div></div>`).join("")||"· пусто";
   $("ch-l").scrollTop=$("ch-l").scrollHeight;
-  $("ch-s").onclick=()=>{const v=$("ch-i").value.trim();if(!v)return;
+  $("ch-s").onclick=()=>{
+    const v=$("ch-i").value.trim();if(!v)return;
+    if(!S.get("chat"))def("chat",(()=>{const a=[];return{push:(w,t)=>{a.push({w,t,ts:Date.now()});S.emit("msg",{w,t,ts:Date.now()})},log:()=>a,snap:()=>({form:"chat",msgs:a.length})}})());
     S.get("chat").push("you",v);$("ch-i").value="";renderTab("chat");
-    setTimeout(()=>{const r=S.get("gen_text").respond(v);S.get("chat").push("core",r);renderTab("chat");S.get("chat_voice").speak(r)},300)};
+    setTimeout(()=>{const r=S.get("gen_text")?S.get("gen_text").respond(v):"· "+rand(["ось","связь","путь"])+" "+rand(["держишь","идёшь"]);
+      S.get("chat").push("core",r);renderTab("chat")},300)};
   $("ch-i").onkeydown=e=>{if(e.key==="Enter")$("ch-s").click()};
 }
 function renderVoice(el){
-  const h=S.get("chat_voice").log();
   el.innerHTML=hdr("CHAT-VOICE","[speak · recognize]")+
     `<div class="pn"><input id="cv-t" placeholder="текст">
        <div style="margin-top:6px"><button class="act" id="cv-s">speak</button>
          <button class="act" id="cv-r">🎤 start</button>
          <button class="act" id="cv-x">× stop</button></div>
-       <div class="r" style="margin-top:6px"><span class="k">статус</span><span id="cv-st">—</span></div></div>
-     <div class="pn">${h.slice(-20).reverse().map(m=>`<div class="msg"><span class="who">${m.w}</span><div>${m.t}</div></div>`).join("")||"· пусто"}</div>`;
+       <div class="r" style="margin-top:6px"><span class="k">статус</span><span id="cv-st">—</span></div></div>`;
   let rec=null;
-  $("cv-s").onclick=()=>{const t=$("cv-t").value.trim();if(t){S.get("chat_voice").speak(t);$("cv-t").value=""}};
-  $("cv-r").onclick=()=>{const r=S.get("chat_voice").listen(t=>{
-    S.get("chat_voice").push("you",t,0.5);
-    const reply=S.get("gen_text").respond(t);
-    S.get("chat_voice").push("core",reply,0.5);S.get("chat_voice").speak(reply);renderTab("chat_voice")});
-    if(r){rec=r;$("cv-st").textContent="слушаю · ru-RU"}else $("cv-st").textContent="недоступно"};
+  const speak=t=>{if(!("speechSynthesis" in window))return;
+    const u=new SpeechSynthesisUtterance(t);u.lang="ru-RU";u.pitch=.9;u.rate=.95;speechSynthesis.speak(u)};
+  $("cv-s").onclick=()=>{const t=$("cv-t").value.trim();if(t){speak(t);$("cv-t").value=""}};
+  $("cv-r").onclick=()=>{try{const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!R){$("cv-st").textContent="недоступно";return}
+    rec=new R();rec.lang="ru-RU";rec.continuous=true;
+    rec.onresult=e=>{const t=e.results[e.results.length-1][0].transcript;
+      $("cv-t").value=t;speak("принято")};
+    rec.start();$("cv-st").textContent="слушаю"}catch(e){$("cv-st").textContent="ошибка"}};
   $("cv-x").onclick=()=>{if(rec){rec.stop();rec=null;$("cv-st").textContent="остановлен"}};
 }
 function renderAvatar(el){
-  const a=S.get("chat_avatar");
   el.innerHTML=hdr("CHAT-AVATAR","")+
-    `<div class="pn"><h2>· ОБРАЗ</h2><div id="caa-p">${a.personas.map(p=>`<button class="act" data-who="${p.name}">${p.name}</button>`).join("")}</div></div>
-     <div class="pn"><h2>· СКАЗАТЬ</h2><input id="caa-i" placeholder="текст"><button class="act" id="caa-s" style="margin-top:6px">say</button></div>
-     <div class="pn">${a.log().slice(-20).reverse().map(m=>`<div class="msg"><span class="who">${m.who}</span><div>${m.text}</div></div>`).join("")||"· пусто"}</div>`;
+    `<div class="pn"><h2>· ОБРАЗ</h2><div id="caa-p">${["Исследователь","Наблюдатель","Строитель","Творец"].map(n=>`<button class="act" data-who="${n}">${n}</button>`).join("")}</div></div>
+     <div class="pn"><h2>· СКАЗАТЬ</h2><input id="caa-i" placeholder="текст"><button class="act" id="caa-s" style="margin-top:6px">say</button></div>`;
   document.querySelectorAll("#caa-p button").forEach(b=>b.onclick=()=>{$("caa-s").dataset.who=b.dataset.who;
     document.querySelectorAll("#caa-p button").forEach(x=>x.classList.remove("on"));b.classList.add("on")});
   $("caa-s").onclick=()=>{const who=$("caa-s").dataset.who||"Исследователь";
-    const t=$("caa-i").value.trim()||S.get("gen_avatar").gen(who);
-    S.get("chat_avatar").push(who,t);$("caa-i").value="";renderTab("chat_avatar")};
+    const t=$("caa-i").value.trim()||"· вижу";$("caa-i").value="";
+    if(S.get("chat_avatar"))S.get("chat_avatar").push(who,t);renderTab("chat_avatar")};
 }
 
-/* LOTS · SUBS · TEMPLATES */
+/* LOTS · SUBS · TEMPLATES · NOTIFICATIONS · PRIORITY · FOCUS · ATT · LEV · LEX · GID · LOGI · EXCH · BUF · MATCH · FLOW · DISP */
 function renderLots(el){
+  const L=[{id:"#1",name:"архив s5xkz",u:9.2},{id:"#2",name:"доступ к Исследователю",u:5},{id:"#3",name:"шаблон chat→voice",u:2.5}];
   el.innerHTML=hdr("LOTS","[buy · доступ]")+
-    `<div class="pn"><h2>· ЛОТЫ</h2>${S.get("lots").list().map(x=>`<div class="r"><span><span class="k">${x.id}</span> ${x.name}</span>
-      <span>${x.price} <button class="act" onclick="S.get('lots').buy('${x.id}');renderTab('lots')">buy</button></span></div>`).join("")}</div>
+    `<div class="pn"><h2>· ЛОТЫ</h2>${L.map(x=>`<div class="r"><span><span class="k">${x.id}</span> ${x.name}</span>
+      <span>${Math.round(x.u*10)} <button class="act" onclick="S.emit('lots:sold',{id:'${x.id}',name:'${x.name}'});S.emit('buffer:store',{id:'lot${x.id}',item:'${x.name}'});renderTab('lots')">buy</button></span></div>`).join("")}</div>
      <div class="pn"><h2>· ДОСТУП</h2>
-       <div class="r"><span class="k">Исследователь</span><span><button class="act" onclick="S.get('subs').add('Исследователь');renderTab('subs')">подписаться</button></span></div>
-       <div class="r"><span class="k">Шаблон chat→voice</span><span><button class="act" onclick="S.get('templates').apply('format:1→10');renderTab('templates')">apply</button></span></div>
-       <div class="r"><span class="k">Архив s5xkz</span><span><button class="act" onclick="S.get('lots').buy('#1');renderTab('lots')">buy</button></span></div></div>`;
+       <div class="r"><span class="k">Исследователь</span><span><button class="act" onclick="S.emit('subs:add',{name:'Исследователь'});renderTab('subs')">подписаться</button></span></div>
+       <div class="r"><span class="k">Шаблон</span><span><button class="act" onclick="S.emit('tpl:apply',{id:'format:1→10'});renderTab('templates')">apply</button></span></div></div>`;
 }
 function renderSubs(el){
-  el.innerHTML=hdr("SUBS","")+`<div class="pn">${S.get("persona").list().map(p=>{
-    const sub=S.get("subs").list().includes(p.name);
-    return `<div class="r"><span class="k">${p.name}</span><span>${sub?
-      `<button class="act" onclick="S.get('subs').drop('${p.name}');renderTab('subs')">отписаться</button>`:
-      `<button class="act" onclick="S.get('subs').add('${p.name}');renderTab('subs')">подписаться</button>`}</span></div>`}).join("")}</div>`;
+  const P=["Исследователь","Наблюдатель","Строитель","Творец"];
+  el.innerHTML=hdr("SUBS","")+`<div class="pn">${P.map(p=>
+    `<div class="r"><span class="k">${p}</span><button class="act" onclick="S.emit('subs:add',{name:'${p}'});renderTab('subs')">подписаться</button></div>`).join("")}</div>`;
 }
 function renderTemplates(el){
-  el.innerHTML=hdr("TEMPLATES","")+`<div class="pn">${S.get("templates").list().map(x=>
-    `<div class="r"><span class="k">${x}</span><button class="act" onclick="S.get('templates').apply('${x}')">apply</button></div>`).join("")}</div>`;
+  const T=["route:sphere→learning","avatar:Исследователь","format:1→10","git:push"];
+  el.innerHTML=hdr("TEMPLATES","")+`<div class="pn">${T.map(x=>
+    `<div class="r"><span class="k">${x}</span><button class="act" onclick="S.emit('tpl:apply',{id:'${x}'})">apply</button></div>`).join("")}</div>`;
 }
-function renderNotifications(el){
-  el.innerHTML=hdr("NOTIFICATIONS","")+`<div class="pn">
-    <div class="r"><span class="k">непрочитанных</span><span>${S.get("notifications").unread()}</span></div>
-    ${S.get("notifications").list().slice().reverse().slice(0,20).map(x=>`<div class="msg">${x.title}</div>`).join("")||"· пусто"}</div>`;
-}
-function renderPriority(el){
-  el.innerHTML=hdr("PRIORITY","")+`<div class="pn">${S.get("priority").sorted().slice(0,10).map(x=>
-    `<div class="r"><span class="k">${x.title}</span></div>`).join("")||"· пусто"}</div>`;
-}
-function renderFocusHints(el){
-  const h=S.get("focus_hints").latest();
-  el.innerHTML=hdr("FOCUS-HINTS","")+`<div class="pn">${(h.hints||[]).map(x=>`<div class="msg">${x}</div>`).join("")}</div>`;
-}
+function renderNotifications(el){el.innerHTML=hdr("NOTIFICATIONS","")+`<div class="pn">· уведомления появляются автоматически (dispatch, lots, git)</div>`}
+function renderPriority(el){el.innerHTML=hdr("PRIORITY","")+`<div class="pn">· сортировка по приоритету</div>`}
+function renderFocusHints(el){el.innerHTML=hdr("FOCUS-HINTS","")+`<div class="pn">· сделай шаг в gid · открой home</div>`}
 function renderAttention(el){
-  const a=S.get("attention").state();
+  const a=S.get("attention").st;
   el.innerHTML=hdr("ATTENTION","")+
     `<div class="c3"><div class="pn"><h2>level</h2><div>${a.level.toFixed(2)}</div></div>
        <div class="pn"><h2>mode</h2><div>${a.mode}</div></div>
        <div class="pn"><h2>noise</h2><div>${a.noise.toFixed(2)}</div></div></div>`;
 }
 function renderLevers(el){
-  const l=S.get("levers");
+  const L=S.get("levers").L;
   el.innerHTML=hdr("LEVERS","[Λ]")+
-    `<div class="pn"><div class="r"><span class="k">Λ</span><span>${l.stability().toFixed(2)}</span></div>
-      <div class="bar"><span style="width:${Math.min(100,l.stability()*50)}%"></span></div></div>
-     <div class="pn"><h2>· РЫЧАГИ</h2>${Object.entries(l.levers).map(([k,v])=>{
+    `<div class="pn"><div class="r"><span class="k">stability</span><span>${S.get("lambda").compute().toFixed(2)}</span></div></div>
+     <div class="pn"><h2>· РЫЧАГИ</h2>${Object.entries(L).map(([k,v])=>{
        if(typeof v.v==="string")return `<div class="r"><span class="k">${k}</span><span>${["raw","soft","sharp"].map(x=>`<button class="act ${v.v===x?"on":""}" onclick="S.get('levers').apply('${k}','${x}');renderTab('levers')">${x}</button>`).join("")}</span></div>`;
-       return `<div class="r"><span class="k">${k}</span><input type="range" min="${v.min}" max="${v.max}" step="${(v.max-v.min)/20}" value="${v.v}" oninput="S.get('levers').apply('${k}',+this.value);renderTab('levers')" style="flex:1"><span>${v.v.toFixed(2)}</span></div>`
-     }).join("")}</div>`;
+       return `<div class="r"><span class="k">${k}</span><span>${v.v.toFixed(2)}</span></div>`}).join("")}</div>`;
 }
 function renderLexicon(el){
   const l=S.get("lexicon");
@@ -889,24 +885,46 @@ function renderLexicon(el){
     `<div class="c3"><div class="pn"><h2>· ЯДРО</h2>${l.base.core.map(w=>`<span class="tag">${w}</span>`).join("")}</div>
       <div class="pn"><h2>· МЕТОД</h2>${l.base.method.map(w=>`<span class="tag">${w}</span>`).join("")}</div>
       <div class="pn"><h2>· ЭТИКА</h2>${l.base.ethics.map(w=>`<span class="tag">${w}</span>`).join("")}</div></div>
-     <div class="pn"><h2>· РАЗМЕР</h2><div class="r"><span class="k">итого</span><span>${l.size()}</span></div></div>`;
-}
-function renderGid(el){
-  const g=S.get("gid");
+     <div class="pn"><h2>· РАЗМЕР</h2><div class="r"><span class="k">итого</span><span>${l.size()}</span></div("gid");
   el.innerHTML=hdr("GID","[маршрут · Γ]")+
     `<div class="pn"><div class="r"><span class="k">цель</span><span>${g.st.target}</span></div>
        <div class="r"><span class="k">шаг</span><span>${g.st.step}/${g.st.route.length}</span></div>
-       <div class="r"><span class="k">Γ</span><span>${g.Γ().toFixed(2)}</span></div>
+       <div class="r"><span class="k">Γ</span><span>${S.get("gamma").compute().toFixed(2)}</span></div>
        <div style="margin-top:6px"><input id="gd-i" placeholder="цель"><button class="act" id="gd-go" style="margin-top:6px">routeTo</button>
          <button class="act" id="gd-step">шаг</button></div></div>`;
-  $("gd-go").onclick=()=>{const `< t=$("gd-i").value.trim();if(t){divS.get("gid").routeTo(t);render classTab("gid")}};
-  $("="gd-step").onclick=()=>{rS.get("gid").step();renderTab("gid")};
+  $("gd-go").onclick=()=>{const t=$("gd-i").value.trim();if(t){S.get("gid").routeTo(t);renderTab("gid")}};
+  $("gd-step").onclick=()=>{S.get("gid").step();renderTab("gid")};
 }
 function renderLogi(el){
   const l=S.get("logi");
-  el.innerHTML=hdr("LOGI","[движение]")+
-    `<div class="pn"><button class="act" onclick="S.get('logi').move('core','world','test');renderTab('logi')">move core→world</button></div>
-     <div class="pn"><h2>· ГРУЗЫ</h2>${l.cargo().slice().reverse().slice(0,15).map(c=>`<div class="r"><span class="k">${c.from}→${c.to}</span><span>${c.item}</span></div>`).join("")||"· пусто"}</div>`;
+  el.innerHTML=hdr("LOGI","")+
+    `<div class="pn"><div class="r"><span class="k">перемещений</span><span>${l.moved()}</span></div>
+       <button class="act" onclick="S.get('logi').move('core','world','test');renderTab('logi')">move</button></div>
+     <div class="pn"><h2>· ГРУЗЫ</h2>${l.cargo().slice().reverse().slice(0,15).map(c=>
+       `<div class="r"><span class="k">${c.from}→${c.to}</span><span>${c.item}</span></div>`).join("")||"· пусто"}</div>`;
+}
+function renderExchange(el){
+  const e=S.get("exchange");
+  el.innerHTML=hdr("EXCHANGE","[p=10·u·(1+r/10)·(1+d/10)]")+
+    `<div class="pn"><div class="r"><span class="k">сделок</span><span>${e.deals().length}</span></div>
+       <button class="act" onclick="S.get('exchange').deal('core','logi','flow');renderTab('exchange')">сделка</button></div>
+     <div class="pn"><h2>· СДЕЛКИ</h2>${e.deals().slice().reverse().slice(0,15).map(d=>
+       `<div class="r"><span class="k">${d.from}→${d.to}</span><span>${d.price}</span></div>`).join("")||"· пусто"}</div>`;
+}
+function renderBuffer(el){
+  const b=S.get("buffer");
+  el.innerHTML=hdr("BUFFER","")+
+    `<div class="c3"><div class="pn"><h2>stored</h2><div>${b.store().length}</div></div>
+       <div class="pn"><h2>hits</h2><div>${b.hits()}</div></div>
+       <div class="pn"><h2>misses</h2><div>${b.misses()}</div></div></div>`;
+}
+function renderMatch(el){
+  const m=S.get("match");
+  el.innerHTML=hdr("MATCH","")+
+    `<div class="pn"><div class="r"><span class="k">найдено</span><span>${m.found()}</span></div>
+       <button class="act" onclick="S.get('match').try_();renderTab('match')">найти</button></div>
+     <div class="pn">${m.matches().slice().reverse().slice(0,10).map(x=>
+       `<div class="r"><span class="k">${x.a}↔${x.b}</span><span>${x.item}</span></div>`).join("")||"· пусто"}</div>`;
 }
 function renderFlow(el){
   const f=S.get("flow");
@@ -918,36 +936,35 @@ function renderDispatch(el){
   const d=S.get("dispatch");
   el.innerHTML=hdr("DISPATCH","")+
     `<div class="pn"><button class="act" onclick="S.get('dispatch').act('manual',rand(G.nodes));renderTab('dispatch')">dispatch</button></div>
-     <div class="pn"><h2>· ДЕЙСТВИЯ</h2>${d.actions().slice().reverse().slice(0,15).map(a=>`<div class="r"><span class="k">${a.what}→${a.where}</span></div>`).join("")||"· пусто"}</div>`;
+     <div class="pn"><h2>· ДЕЙСТВИЯ</h2>${d.actions().slice().reverse().slice(0,15).map(a=>
+       `<div class="r"><span class="k">${a.what}→${a.where}</span></div>`).join("")||"· пусто"}</div>`;
 }
 function renderSnap(el,t){
   const o=S.get(t);
   if(!o||!o.snap){el.innerHTML=hdr(t.toUpperCase(),"")+`<div class="pn">· нет snapshot</div>`;return}
   const s=o.snap();
   const nb=G.edges.filter(([a,b])=>a===t||b===t).map(([a,b,w])=>({n:a===t?b:a,w})).sort((x,y)=>y.w-x.w);
-  el.innerHTML=hdr(t.toUpperCase(),`[${G.group(t)} · deg=${G.degree(t)}]`)+
+  el.innerHTML=hdr(t.toUpperCase(),`[${G.gp(t)} · deg=${G.dg(t)}]`)+
     `<div class="c2"><div class="pn"><h2>· SNAPSHOT</h2>${Object.entries(s).map(([k,v])=>
       `<div class="r"><span class="k">${k}</span><span>${typeof v==="object"?JSON.stringify(v):v}</span></div>`).join("")}</div>
      <div class="pn"><h2>· СВЯЗИ (${nb.length})</h2>${nb.slice(0,20).map(x=>
-      "><span class="k">${x.n}</span><span>${x.w.toFixed(2)}</span></div>`).join("")}</div></div>`;
+       `<div class="r"><span class="k">${x.n}</span><span>${x.w.toFixed(2)}</span></div>`).join("")}</div></div>`;
 }
 
-/* ============================================================
-   BADGE
-   ============================================================ */
+/* BADGE */
 function updateBadge(){
-  const lv=S.get("levers").stability().toFixed(2);
+  const lv=S.get("lambda").compute().toFixed(2);
   const mode=S.get("mode").mode();
-  const git=S.get("git").status().lastStatus;
+  const gs=S.get("git").status().lastStatus;
   const mClass=mode==="local"?"ok":mode==="hybrid"?"warn":"";
-  $("badge").innerHTML=`узлов <b>${G.nodes.length}</b> · связей <b>${G.edges.length}</b> · модулей <b>${TAB_ORDER.length}</b> · Λ <b>${lv}</b> · режим <b class="${mClass}">${mode}</b> · git <b>${git}</b>`;
+  $("badge").innerHTML=`узлов <b>${G.nodes.length}</b> · связей <b>${G.edges.length}</b> · модулей <b>${TAB_ORDER.length}</b> · Λ <b>${lv}</b> · режим <b class="${mClass}">${mode}</b> · git <b>${gs}</b>`;
 }
 updateBadge();setInterval(updateBadge,2000);
 
-/* ============================================================
-   СТАРТ
-   ============================================================ */
+/* старт */
 renderTab("home");
-console.log("[Monomod v10.2] узлов:",G.nodes.length,"· связей:",G.edges.length,
+console.log("[MONOMOD v10.2] узлов:",G.nodes.length,"· связей:",G.edges.length,
   "· модулей:",TAB_ORDER.length,"· режим:",S.get("mode").mode());
-</script></body></html>
+console.log("MONOMOD.report() →",MONOMOD.report());
+</script>
+</body></html>
