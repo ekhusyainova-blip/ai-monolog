@@ -1,0 +1,957 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>MONOMOD v10.1</title><meta name="theme-color" content="#0a0809">
+<style>
+:root{--bg:#0a0809;--ac:#e8c39e;--tl:#4dd0c7;--dm:#3a3236;--ln:#221c1f;--gd:#f59e0b;--rd:#ef4444;--gr:#10b981;--pp:#a78bfa}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--ac);font:12px/1.4 'Courier New',monospace;overflow:hidden;-webkit-text-size-adjust:100%}
+#bar{padding:4px 6px;border-bottom:1px solid var(--ln);background:#0d0a0c}
+#bar .t{color:var(--tl);font-size:10px;letter-spacing:2px;display:block;margin-bottom:3px}
+#bar .badge{color:var(--dm);font-size:9px;display:block;margin-bottom:4px}
+#bar .badge b{color:var(--tl);font-weight:400}
+#tabs{display:flex;flex-wrap:wrap;gap:2px;max-height:76px;overflow-y:auto}
+#tabs button{background:none;border:1px solid var(--dm);color:var(--ac);font:9px 'Courier New',monospace;padding:3px 5px;cursor:pointer;letter-spacing:.5px;white-space:nowrap}
+#tabs button:hover,#tabs button.on{border-color:var(--tl);color:var(--tl)}
+#tabs button.home-btn{border-color:var(--gd);color:var(--gd)}
+#stg{position:absolute;top:104px;left:0;right:0;bottom:0;overflow:auto;-webkit-overflow-scrolling:touch}
+.p{display:none;padding:10px}.p.on{display:block}
+.h{border:1px solid var(--ln);padding:8px 12px;margin-bottom:10px}
+.h h1{font-size:12px;font-weight:400;letter-spacing:1.5px;margin-bottom:3px}
+.h .f{color:var(--tl);font-size:10px}
+.pn{border:1px solid var(--ln);padding:10px;background:#0d0a0c;margin-bottom:8px}
+.pn h2{font-size:10px;color:var(--tl);font-weight:400;letter-spacing:1px;margin-bottom:6px}
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.c3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.r{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--ln);font-size:10px;align-items:center;gap:6px}
+.r:last-child{border-bottom:none}.r .ok{color:var(--tl)}.r .k{color:var(--tl);font-size:9px}
+canvas{display:block;background:#0d0a0c;border:1px solid var(--ln);max-width:100%;height:auto}
+input,textarea{background:#0d0a0c;border:1px solid var(--dm);color:var(--ac);font:inherit;padding:6px;outline:none;width:100%}
+input:focus,textarea:focus{border-color:var(--tl)}
+button.act{background:none;border:1px solid var(--dm);color:var(--ac);font:inherit;padding:4px 8px;cursor:pointer;font-size:10px;margin-right:3px;margin-bottom:3px}
+button.act:hover{border-color:var(--tl);color:var(--tl)}
+button.act.on{border-color:var(--tl);color:var(--tl);box-shadow:0 0 6px rgba(77,208,199,.4)}
+.msg{padding:5px 7px;border-left:2px solid var(--ln);margin-bottom:5px;font-size:10px}
+.msg.you{border-color:var(--tl)}.msg.core{border-color:var(--ac)}
+.msg .who{color:var(--tl);font-size:9px;letter-spacing:.5px}
+.msg .ts{color:var(--dm);font-size:8px;margin-left:5px}
+.bar{height:3px;background:#1a1518;margin-top:2px;position:relative;flex:1;margin:0 6px}
+.bar span{position:absolute;left:0;top:0;bottom:0;background:var(--tl);transition:.3s}
+#wave{position:fixed;top:0;left:0;right:0;height:2px;background:var(--tl);opacity:0;transition:.15s;pointer-events:none;z-index:99}
+#home-grid{display:grid;grid-template-columns:1fr;gap:8px}
+.home-block{border:1px solid var(--ln);padding:10px;background:#0d0a0c}
+.home-block h3{font-size:10px;color:var(--tl);font-weight:400;letter-spacing:1.5px;margin-bottom:6px;text-transform:uppercase}
+.tag{display:inline-block;border:1px solid var(--dm);padding:2px 6px;margin:2px;font-size:9px;color:var(--ac)}
+.tag.k{color:var(--tl);border-color:var(--tl)}
+.tag.w{color:var(--gd);border-color:var(--gd)}
+.tag.r{color:var(--rd);border-color:var(--rd)}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#0a0809}::-webkit-scrollbar-thumb{background:#1f1a22}
+::selection{background:var(--tl);color:var(--bg)}
+@media(min-width:700px){#home-grid{grid-template-columns:1fr 1fr}}
+</style></head><body>
+
+<div id="wave"></div>
+<div id="bar">
+  <span class="t">MONOMOD v10.1</span>
+  <span class="badge" id="badge">…</span>
+  <div id="tabs"></div>
+</div>
+<div id="stg"></div>
+
+<script>
+/* ============================================================
+   G · граф (те же 67 узлов, 189 связей) + группы + степени
+   ============================================================ */
+const G = {
+  nodes:["core","map","chat","monolog","cognitive","perception","chatY","klepa",
+    "agents","learning","profile","sphere","viz-1d","viz-5d","social-5d","ring",
+    "ui","archive","bridge","center","convert",
+    "chat_voice","chat_avatar","social","subs","utility","lots","templates",
+    "adapt","persona","game","travel","dims","sense","video","anim","movies",
+    "blog","world","immersion",
+    "gen_text","gen_avatar","gen_video_avatar","reputation",
+    "anticipate","calendar","notifications","priority","focus","focus_hints",
+    "obs_in","obs_out","wit_in","wit_out","prt_in","prt_out","fmt_in","fmt_out",
+    "attention","levers","lexicon","gid",
+    "logi","exchange","buffer","match","flow","dispatch"],
+
+  edges:[
+    ["core","map",1],["core","chat",1],["core","monolog",1],["core","cognitive",1],
+    ["core","perception",1],["core","chatY",1],["core","klepa",1],["core","agents",1],
+    ["core","learning",1],["map","chat",1],["chat","monolog",1],["cognitive","perception",1],
+    ["chatY","klepa",1],["klepa","agents",1],["agents","learning",1],
+    ["perception","learning",1],["sphere","monolog",1.2],
+    ["core","ui",1.5],["ui","profile",1],["ui","monolog",1],["ui","klepa",1],
+    ["core","archive",1.3],["core","bridge",1.3],["core","center",1.3],
+    ["archive","bridge",1.5],["archive","center",1.5],["bridge","center",1.5],
+    ["ui","archive",1.2],["ui","bridge",1.2],["ui","center",1.2],
+    ["core","convert",1.4],["ui","convert",1.3],["convert","archive",1.2],["convert","bridge",1.2],
+    ["core","chat_voice",1.2],["chat","chat_voice",1.5],["chat_voice","chat_avatar",1.4],
+    ["chat_avatar","social",1.3],["chat","perception",1],["chat_voice","sense",1.1],
+    ["social","subs",1.5],["social","persona",1.4],["subs","persona",1.5],["persona","adapt",1.6],
+    ["subs","utility",1.3],["social","lots",1.2],
+    ["utility","lots",1.5],["lots","templates",1.2],["templates","adapt",1.3],
+    ["utility","learning",1.1],["lots","bridge",1],["templates","convert",1.1],
+    ["adapt","persona",1.6],["adapt","ui",1.5],["adapt","profile",1.2],["persona","profile",1.2],
+    ["adapt","dims",1.3],
+    ["game","agents",1.2],["game","learning",1.3],["game","persona",1.3],
+    ["game","templates",1.2],["game","world",1.5],["game","immersion",1.4],
+    ["travel","dims",1.5],["travel","world",1.5],["travel","sphere",1.2],["dims","sense",1.4],
+    ["dims","viz-5d",1.3],["travel","immersion",1.5],
+    ["sense","perception",1.5],["sense","cognitive",1.3],["sense","dims",1.4],
+    ["sense","immersion",1.5],["sense","adapt",1.2],
+    ["video","anim",1.4],["video","movies",1.5],["anim","blog",1.2],["movies","blog",1.3],
+    ["video","world",1.2],["anim","world",1.1],["movies","persona",1.2],["blog","persona",1.3],
+    ["world","immersion",1.6],["world","travel",1.5],["world","social-5d",1.2],
+    ["immersion","travel",1.5],["immersion","sense",1.4],["world","ui",1.3],
+    ["social","chat",1.2],["subs","chat",1.1],["blog","social",1.2],
+    ["core","gen_text",1.3],["chat_voice","gen_text",1.5],["monolog","gen_text",1.2],["persona","gen_text",1.4],
+    ["gen_text","gen_avatar",1.5],["chat_avatar","gen_avatar",1.5],["persona","gen_avatar",1.4],["adapt","gen_avatar",1.2],
+    ["gen_text","gen_video_avatar",1.4],["video","gen_video_avatar",1.5],["movies","gen_video_avatar",1.4],["persona","gen_video_avatar",1.4],
+    ["social","reputation",1.4],["subs","reputation",1.5],["utility","reputation",1.5],["persona","reputation",1.3],
+    ["reputation","priority",1.5],["reputation","focus",1.3],
+    ["learning","anticipate",1.5],["sense","anticipate",1.4],["core","anticipate",1.2],["anticipate","calendar",1.5],
+    ["anticipate","notifications",1.4],["anticipate","focus_hints",1.4],
+    ["calendar","notifications",1.5],["calendar","persona",1.2],
+    ["notifications","priority",1.5],["priority","focus",1.5],["focus","focus_hints",1.5],["focus_hints","adapt",1.3],
+    ["core","obs_in",1.5],["sphere","obs_in",1.5],["perception","obs_in",1.5],
+    ["obs_in","obs_out",1.8],["obs_out","ui",1.5],["obs_out","world",1.4],["obs_out","archive",1.3],
+    ["core","wit_in",1.4],["sphere","wit_in",1.4],["perception","wit_in",1.3],["obs_out","wit_in",1.6],
+    ["wit_in","wit_out",1.8],["wit_out","ui",1.5],["wit_out","archive",1.4],["wit_out","world",1.4],
+    ["core","prt_in",1.4],["ui","prt_in",1.3],["travel","prt_in",1.3],["game","prt_in",1.3],["social","prt_in",1.2],
+    ["prt_in","prt_out",1.8],["prt_out","core",1.6],["prt_out","world",1.5],["prt_out","immersion",1.5],["prt_out","social",1.4],
+    ["wit_out","fmt_in",1.6],["prt_out","fmt_in",1.6],["gen_text","fmt_in",1.4],["gen_avatar","fmt_in",1.4],
+    ["fmt_in","fmt_out",1.8],
+    ["fmt_out","video",1.5],["fmt_out","blog",1.4],["fmt_out","movies",1.4],["fmt_out","social",1.3],["fmt_out","chat_voice",1.4],
+    ["wit_out","prt_in",1.7],["prt_out","wit_in",1.7],
+    ["fmt_out","world",1.5],
+    ["core","attention",1.4],["priority","attention",1.5],["focus","attention",1.5],
+    ["attention","fmt_out",1.5],["attention","ui",1.4],["attention","sense",1.3],
+    ["attention","focus_hints",1.4],
+    ["attention","levers",1.5],["sense","levers",1.4],["focus","levers",1.4],
+    ["levers","center",1.3],["levers","sense",1.4],["levers","lexicon",1.5],
+    ["levers","travel",1.2],
+    ["gen_text","lexicon",1.5],["gen_avatar","lexicon",1.4],["monolog","lexicon",1.3],
+    ["lexicon","gen_text",1.5],["lexicon","levers",1.5],
+    ["attention","gid",1.5],["levers","gid",1.5],["lexicon","gid",1.4],
+    ["adapt","gid",1.5],["focus","gid",1.4],["anticipate","gid",1.5],
+    ["calendar","gid",1.4],["persona","gid",1.5],["travel","gid",1.4],
+    ["world","gid",1.5],["gid","fmt_out",1.5],["gid","prt_out",1.5],
+    ["gid","wit_out",1.4],["gid","obs_out",1.4],
+    ["gid","logi",1.6],["travel","logi",1.5],["exchange","logi",1.6],
+    ["logi","dispatch",1.7],["logi","gid",1.5],["logi","world",1.5],
+    ["lots","exchange",1.6],["utility","exchange",1.6],["reputation","exchange",1.5],
+    ["exchange","logi",1.6],["exchange","buffer",1.7],["exchange","match",1.5],
+    ["exchange","archive",1.3],["buffer","flow",1.6],["buffer","world",1.4],
+    ["archive","buffer",1.4],["persona","match",1.5],["subs","match",1.6],["utility","match",1.5],
+    ["match","exchange",1.6],["match","notifications",1.4],
+    ["anticipate","flow",1.6],["learning","flow",1.5],["obs_out","flow",1.6],
+    ["flow","dispatch",1.7],["flow","calendar",1.5],
+    ["match","dispatch",1.5],
+    ["dispatch","gid",1.7],["dispatch","calendar",1.5],
+    ["dispatch","notifications",1.5],["dispatch","attention",1.4]
+  ],
+
+  W:{}, DEG:{}, GROUPS:{},
+  build(){
+    this.edges.forEach(([a,b,w])=>{ this.W[a+"|"+b]=w; this.W[b+"|"+a]=w;
+      this.DEG[a]=(this.DEG[a]||0)+1; this.DEG[b]=(this.DEG[b]||0)+1 });
+    this.GROUPS={
+      core:["core"],
+      ahead:["logi","exchange","buffer","match","flow","dispatch"],
+      guide:["gid","attention","levers","lexicon","anticipate","calendar","notifications","priority","focus","focus_hints"],
+      observe:["obs_in","obs_out","wit_in","wit_out","prt_in","prt_out","fmt_in","fmt_out"],
+      gen:["gen_text","gen_avatar","gen_video_avatar","video","anim","movies","blog"],
+      social:["social","subs","utility","lots","templates","persona","reputation","chat","chat_voice","chat_avatar"],
+      base:["map","monolog","cognitive","perception","chatY","klepa","agents","learning","profile","sphere","viz-1d","viz-5d","social-5d","ring","ui","archive","bridge","center","convert","adapt","game","travel","dims","sense","world","immersion"]
+    };
+  },
+  neighbor(id){ return this.edges.filter(([a,b])=>a===id||b===id).map(([a,b])=>a===id?b:a) },
+  weight(a,b){ return this.W[a+"|"+b]||this.W[b+"|"+a]||1 },
+  degree(id){ return this.DEG[id]||0 },
+  group(id){ for(const g in this.GROUPS) if(this.GROUPS[g].includes(id)) return g; return "base" },
+  path(a,b){ if(a===b) return [a];
+    const q=[[a]], seen={[a]:1};
+    while(q.length){ const p=q.shift(), last=p[p.length-1];
+      for(const n of this.neighbor(last)){
+        if(seen[n]) continue;
+        if(n===b) return [...p,n];
+        seen[n]=1; q.push([...p,n]) } }
+    return null },
+  bfs(src,radius=3){
+    const out=[]; const q=[[src,0,1]]; const seen={[src]:1};
+    while(q.length){ const [id,d,acc]=q.shift();
+      if(d>=radius) continue;
+      for(const n of this.neighbor(id)){
+        if(seen[n]) continue; seen[n]=1;
+        const w=this.weight(id,n);
+        out.push({from:id,to:n,hop:d+1,w:+(acc*w).toFixed(3)});
+        q.push([n,d+1,acc*w]) } }
+    return out }
+};
+G.build();
+
+/* ============================================================
+   S · шина
+   ============================================================ */
+const S = (()=>{
+  const L={}, R={};
+  return{
+    on(t,f){ (L[t]=L[t]||[]).push(f) },
+    emit(t,d){ (L[t]||[]).forEach(f=>{try{f(d)}catch(e){}}) },
+    node(id,api){ R[id]=api; S.emit("reg",{id}); return api },
+    get:id=>R[id], list:()=>Object.keys(R),
+    all(){ const o={}; for(const i in R) try{o[i]=R[i].snap?R[i].snap():null}catch(e){}; return o },
+    snap:()=>({form:"core",core:[.36,.31,.33],center:.42,hash:"rqlmhwgt",
+      registered:Object.keys(R).length, links:G.edges.length,
+      listeners:Object.keys(L).length}),
+    route(a,b,ty,payload){
+      const p=G.path(a,b); if(!p) return null;
+      let acc=1;
+      p.slice(1).forEach((id,i)=>{ acc*=G.weight(p[i],id);
+        setTimeout(()=>{ S.emit("hop",{i:i+1,from:p[i],to:id,path:p,type:ty,w:+acc.toFixed(3)});
+          S.emit(ty,{...payload,via:id,from:p[i],hopWeight:acc}); }, i*90) });
+      return p },
+    wave(src){
+      S.emit("wave",{src,t:Date.now()});
+      const w=document.getElementById("wave");
+      if(w){ w.style.opacity=.9; setTimeout(()=>w.style.opacity=0,180) }
+      const bfs=G.bfs(src,3);
+      bfs.forEach(({to,hop,w:acc})=>{ setTimeout(()=>S.emit("wave:hit",{src,node:to,hop,w:acc}),hop*70) }) },
+    echo(src,ty,payload){ setTimeout(()=>S.emit("echo",{src,type:ty,payload,t:Date.now()}), 600+Math.random()*300) },
+    cascade(src,ty,payload,depth=2){
+      S.emit(ty,{...payload,from:src});
+      const bfs=G.bfs(src,depth);
+      bfs.forEach(({to,hop,w})=>{ if(w<0.4) return;
+        setTimeout(()=>S.emit(ty+":cascade",{...payload,from:src,via:to,hop,w}),hop*120) }) }
+  };
+})();
+const clip=(v,a,b)=>Math.max(a,Math.min(b,v));
+const norm=(a,t)=>{const s=a.reduce((x,y)=>x+y,0)||1;return a.map(x=>x*t/s)};
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+const def=(id,o)=>S.node(id,Object.assign({id,snap:()=>({form:id})},o));
+
+/* Ψ · Ω */
+const Ψ={p:[0.36,0.31,0.33],rotate(){const [c,m,s]=this.p;
+  this.p=norm([c+.05*(s-m),m+.05*(c-s),s+.05*(m-c)].map(x=>clip(x,.05,.95)),1)},
+  sum(){return this.p.reduce((a,b)=>a+b,0)},snap(){return{form:"Ψ",p:this.p.slice(),sum:this.sum()}}};
+setInterval(()=>Ψ.rotate(),100);
+const Ω={value:0.42,locks:[],lock(reason="manual"){const l={t:Date.now(),reason,core:Ψ.p.slice(),center:this.value};
+  this.locks.push(l);if(this.locks.length>100)this.locks.shift();S.emit("ctr",{reason,t:l.t});return l},
+  snap:()=>({form:"Ω",value:this.value,locks:this.locks.length})};
+
+/* ============================================================
+   МИНИМАЛЬНЫЙ НАБОР УЗЛОВ (для работы home/chat/gid/plan)
+   ============================================================ */
+def("map",{snap:()=>({form:"map",n:G.nodes.length,m:G.edges.length})});
+def("chat",(()=>{const h=[];return{
+  push:(w,t)=>{h.push({w,t,ts:Date.now()});if(h.length>200)h.shift();S.emit("msg",{w,t,ts:Date.now()})},
+  log:()=>h,snap:()=>({form:"chat",msgs:h.length})}})());
+def("chat_voice",(()=>{const h=[];return{
+  push:(w,t,dur)=>{h.push({w,t,dur,ts:Date.now()});S.emit("voice:out",{w,t,dur})},
+  speak:t=>{ if(!("speechSynthesis" in window)){return} const u=new SpeechSynthesisUtterance(t);
+    u.lang="ru-RU";u.pitch=.5+(Ψ.p[0]-Ψ.p[2])*.5;u.rate=.7+Ψ.p[1]*.6;speechSynthesis.speak(u) },
+  listen:(cb)=>{ try{ const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!R) return null; const r=new R(); r.lang="ru-RU"; r.continuous=true; r.interimResults=false;
+    r.onresult=e=>{ const t=e.results[e.results.length-1][0].transcript; cb(t) };
+    r.start(); return r }catch(e){ return null } },
+  log:()=>h,snap:()=>({form:"chat_voice",msgs:h.length})}})());
+def("chat_avatar",(()=>{const h=[];const personas=[
+  {name:"Исследователь",p:[.4,.3,.3]},{name:"Наблюдатель",p:[.5,.2,.3]},
+  {name:"Строитель",p:[.3,.4,.3]},{name:"Творец",p:[.3,.3,.4]}];
+  return{personas,log:()=>h,push:(who,text)=>h.push({who,text,ts:Date.now()}),
+    snap:()=>({form:"chat_avatar",msgs:h.length})}})());
+def("gen_text",(()=>{
+  const W={core:["ось","центр","опора","ядро"],method:["шаг","путь","ритм","дело"],ethics:["мы","связь","рядом","вместе"]};
+  const V=["держишь","идёшь","дышишь","смотришь","слушаешь"];
+  const E=[".","..."," — ","?","!"," "];
+  const gen=()=>{const mx=Ψ.p.indexOf(Math.max(...Ψ.p)),mn=Ψ.p.indexOf(Math.min(...Ψ.p));
+    const K=["core","method","ethics"];
+    return rand(W[K[mx]])+" "+rand(V)+" "+rand(W[K[mn]])+rand(E)};
+  const respond=(input)=>{
+    const t=input.toLowerCase();
+    if(t.includes("привет")||t.includes("здрав")) return "· держу ось";
+    if(t.includes("как")||t.includes("что")) return "· "+rand(["вижу","слышу","фиксирую"])+" "+gen();
+    if(t.includes("план")||t.includes("день")) return "· план: "+(S.get("home")?S.get("home").plan().slice(0,3).map(x=>x.title).join(", "):"собери в home");
+    if(t.includes("лот")||t.includes("купить")) return "· открой lots → buy";
+    if(t.includes("связ")) return "· всего "+G.edges.length+" связей, узлов "+G.nodes.length;
+    return "· "+gen() };
+  const speak=t=>{ if(!("speechSynthesis" in window)) return;
+    const u=new SpeechSynthesisUtterance(t);u.lang="ru-RU";u.pitch=.5+(Ψ.p[0]-Ψ.p[2])*.5;u.rate=.7+Ψ.p[1]*.6;speechSynthesis.speak(u) };
+  return{gen,respond,speak,snap:()=>({form:"gen_text",pitch:+(.5+(Ψ.p[0]-Ψ.p[2])*.5).toFixed(2)})}})());
+def("gen_avatar",(()=>{const P=[
+  {name:"Исследователь",p:[.4,.3,.3],v:["паттерн","связь","шум"]},
+  {name:"Наблюдатель",p:[.5,.2,.3],v:["фиксирую","вижу"]},
+  {name:"Строитель",p:[.3,.4,.3],v:["мост","блок","соединяю"]},
+  {name:"Творец",p:[.3,.3,.4],v:["создаю","рисую"]}];
+  const gen=who=>{const p=P.find(x=>x.name===who)||P[0];return rand(p.v)+" "+rand(["тихо","ясно","ровно","."])};
+  return{list:()=>P.map(x=>x.name),gen,snap:()=>({form:"gen_avatar",count:P.length})}})());
+def("social",(()=>{const posts=[];
+  S.on("msg",m=>{ if(m.w==="you"&&Math.random()<.3) posts.push({who:"core",text:"· видел "+m.t.slice(0,20),ts:Date.now(),likes:Math.floor(Math.random()*5)}) });
+  S.on("logi:move",d=>posts.push({who:"logi",text:`${d.from}→${d.to}`,ts:Date.now(),likes:0}));
+  return{posts:()=>posts.slice(-40),snap:()=>({form:"social",posts:posts.length})}})());
+def("subs",(()=>{const s=new Set(["Исследователь","Наблюдатель"]);
+  return{list:()=>[...s],add:n=>{s.add(n);S.emit("subs:add",{name:n})},drop:n=>{s.delete(n);S.emit("subs:drop",{name:n})},snap:()=>({form:"subs",count:s.size})}})());
+def("utility",(()=>{const idx={core:9.4,convert:8.7,attention:8.0,logi:7.5,exchange:7.2,social:7.5};
+  const get=n=>idx[n]||5;const bump=(n,d=.05)=>{idx[n]=clip(get(n)+d,0,10);S.emit("utility:update",{name:n,v:idx[n]})};
+  return{idx,get,bump,snap:()=>({form:"utility",avg:+Object.values(idx).reduce((a,b)=>a+b,0)/Object.keys(idx).length})}})());
+def("lots",(()=>{const L=[{id:"#1",name:"архив s5xkz",u:9.2},{id:"#2",name:"доступ к Исследователю",u:5},{id:"#3",name:"шаблон chat→voice",u:2.5}];
+  return{list:()=>L.map(l=>({...l,price:Math.round(10*l.u)})),
+    buy:id=>{const l=L.find(x=>x.id===id);if(l){S.emit("lots:sold",{id,name:l.name});S.emit("buffer:store",{id:"lot"+Date.now(),item:l.name,price:Math.round(10*l.u)})}return l},
+    snap:()=>({form:"lots",count:L.length})}})());
+def("templates",(()=>{const T=["route:sphere→learning","avatar:Исследователь","format:1→10","game:20","world:orbit","logi:flow"];
+  return{list:()=>T,apply:id=>S.emit("tpl:apply",{id}),snap:()=>({form:"templates",count:T.length})}})());
+def("persona",(()=>{const P=[{id:"self",name:"вы",p:[.36,.31,.33]},{id:"Исследователь",name:"Исследователь",p:[.4,.3,.3]},{id:"Наблюдатель",name:"Наблюдатель",p:[.5,.2,.3]},{id:"Строитель",name:"Строитель",p:[.3,.4,.3]},{id:"Творец",name:"Творец",p:[.3,.3,.4]}];
+  return{list:()=>P,get:id=>P.find(x=>x.id===id||x.name===id),snap:()=>({form:"persona",count:P.length})}})());
+def("reputation",(()=>{const rep={"вы":7.2,"Исследователь":8.1,"Наблюдатель":6.5,"Строитель":7.8,"Творец":6.9};
+  const get=n=>rep[n]||5;const bump=(n,d)=>{rep[n]=clip(get(n)+d,0,10);S.emit("reputation:update",{name:n,v:rep[n]})};
+  return{rep,get,bump,snap:()=>({form:"reputation",count:Object.keys(rep).length})}})());
+def("anticipate",(()=>{const hints=[];
+  const predict=()=>{const out={};out.suggest=rand(["спокойно","волна","дыхание"]);
+    hints.push({...out,ts:Date.now()});if(hints.length>50)hints.shift();S.emit("anticipate:ready",out);return out};
+  setInterval(()=>{if(Math.random()<.2)predict()},8000);
+  return{hints:()=>hints.slice(-20),predict,snap:()=>({form:"anticipate",hints:hints.length})}})());
+def("calendar",(()=>{const events=[];
+  const add=(title,when)=>{const e={id:"e"+Date.now().toString(36),title,when,ts:Date.now()};events.push(e);S.emit("calendar:add",e);return e};
+  S.on("anticipate:ready",d=>{if(d.suggest)add("подсказка: "+d.suggest,Date.now()+60000)});
+  S.on("dispatch:act",a=>add("дисп: "+a.what,Date.now()+10000));
+  return{events:()=>events.slice(-30),add,snap:()=>({form:"calendar",count:events.length})}})());
+def("notifications",(()=>{const n=[];
+  const push=(title,priority=.5)=>{const x={id:"n"+Date.now().toString(36),title,priority,read:false,ts:Date.now()};
+    n.push(x);if(n.length>100)n.shift();S.emit("notify",x);return x};
+  S.on("anticipate:ready",d=>{if(d.suggest)push("подсказка: "+d.suggest,.4)});
+  S.on("dispatch:act",a=>push("дисп: "+a.what,.7));
+  return{list:()=>n.slice(),push,unread:()=>n.filter(x=>!x.read).length,
+    snap:()=>({form:"notifications",count:n.length,unread:n.filter(x=>!x.read).length})}})());
+def("priority",(()=>{const compute=n=>{const u=S.get("utility"),r=S.get("reputation");
+    return +(0.4*u.get("core")+0.3*r.get("вы")+0.3*(n.priority||.5)).toFixed(2)};
+  const sorted=()=>S.get("notifications").list().map(n=>({...n,score:compute(n)})).sort((a,b)=>b.score-a.score);
+  return{compute,sorted,snap:()=>({form:"priority",count:sorted().length})}})());
+def("focus",(()=>{const state={level:.7};
+  const compute=()=>{const n=S.get("notifications").unread();const s=S.get("sense").st;
+    const lv=clip(1 - n*0.05 - (1-s.silence)*0.3 + s.immersion*0.4,0,1);state.level=lv;return lv};
+  setInterval(()=>{compute()},2000);
+  return{level:()=>state.level,snap:()=>({form:"focus",level:+state.level.toFixed(2)})}})());
+def("focus_hints",(()=>{const H=[];
+  const suggest=()=>{const f=S.get("focus").level();const s=S.get("sense").st;const out=[];
+    if(f<0.4)out.push("уменьши уведомления");
+    if(s.immersion<0.3)out.push("включи погружение");
+    if(s.silence>0.7)out.push("фокус уже хорош");
+    if(S.get("notifications").unread()>5)out.push("разбери входящие");
+    const h={ts:Date.now(),hints:out};H.push(h);if(H.length>30)H.shift();if(out.length)S.emit("focus:hint",h);return out};
+  setInterval(()=>{if(Math.random()<.1)suggest()},5000);
+  return{latest:()=>H[H.length-1]||{hints:["· сделай шаг в gid"]},suggest,snap:()=>({form:"focus_hints",count:H.length})}})());
+def("attention",(()=>{const state={level:0.7,mode:"ровный",noise:0.3,last:null,buffer:[]};
+  const compute=()=>{const f=S.get("focus").level();const unread=S.get("notifications").unread();
+    const sil=S.get("sense").st.silence;const noise=clip(unread*0.05 - sil*0.3,0,1);
+    const level=clip(f*(1-noise)*0.9,0,1);state.level=level;state.noise=noise;
+    state.mode=level>0.7?"глубокий":level>0.4?"ровный":"рассеянный";return{level,mode:state.mode,noise}};
+  setInterval(()=>{const c=compute();if(c.mode!==state.last){state.last=c.mode;S.emit("attention:mode",c)}},1000);
+  return{state:()=>({...state}),compute,snap:()=>({form:"ATT",level:+state.level.toFixed(2),mode:state.mode})}})());
+def("levers",(()=>{const levers={silence:{v:0.42,min:0,max:1},lexicon:{v:0.4,min:0,max:1},tempo:{v:1,min:0.5,max:2},depth:{v:2,min:1,max:4},filter:{v:"soft"},wave_gain:{v:0.7,min:0,max:1}};
+  const stability=()=>{const s=levers.silence.v,l=levers.lexicon.v,t=levers.tempo.v,d=levers.depth.v,n=Math.max(0.1,S.get("attention").state().noise);
+    return clip((s+l+0.5)/(t*d*n),0,2)};
+  const apply=(name,value)=>{if(!levers[name]) return;levers[name].v=value;S.emit("levers:apply",{name,value})};
+  return{levers,apply,stability,reset:()=>{Object.keys(levers).forEach(k=>{if(k==="filter")levers[k].v="soft";else if(k==="tempo")levers[k].v=1;else if(k==="depth")levers[k].v=2;else levers[k].v=(levers[k].min+levers[k].max)/2})},
+    snap:()=>({form:"LEV",stability:+stability().toFixed(2)})}})());
+def("lexicon",(()=>{const base={core:["ось","центр","опора","ядро"],method:["шаг","путь","ритм","дело"],ethics:["мы","связь","рядом","вместе"]};
+  const extra=[];const size=()=>Object.values(base).flat().length+extra.length;
+  const expand=f=>{const n=Math.round(f*10);for(let i=0;i<n;i++)extra.push("·"+i);S.emit("lexicon:expand",{size:size()})};
+  const pick=k=>{const pool=[...base[k],...extra];return pool[Math.floor(Math.random()*pool.length)]};
+  return{base,extra,pick,expand,size,snap:()=>({form:"LEX",total:size()})}})());
+def("sense",(()=>{const st={wave_gain:.7,echo_delay:300,silence:.42,immersion:.85,filter:"soft"};
+  return{st,set:(k,v)=>{st[k]=v;S.emit("sense:shift",{k,v})},snap:()=>({form:"sense",...st})}})());
+def("sphere",(()=>{const S2={p:[1/3,1/3,1/3],silence:.42,t:0,mode:"alive",_h:[0,0,0,0,0,0,0,0]};
+  setInterval(()=>{const n=Math.sqrt(S2._h.reduce((a,x)=>a+x*x,0));
+    S2.silence=clip(S2.silence+.1*(.3-n),0,1);S2.mode=S2.silence>.8?"still":S2.silence>.5?"silence":"alive";S2.t++;
+    S.emit("sphere:tick",{mode:S2.mode,t:S2.t,silence:S2.silence});
+    if(S2.t%40===0){S.emit("core:beat",{t:S2.t});S.wave("sphere")}},50);
+  return{S:S2,push:v=>S2._h=v,snap:()=>({form:"sphere",mode:S2.mode,t:S2.t})}})());
+
+/* AHEAD: logi · exchange · buffer · match · flow · dispatch */
+def("logi",(()=>{const cargo=[];let moved=0;
+  const move=(from,to,item)=>{const m={id:"m"+Date.now().toString(36),from,to,item,t:Date.now()};
+    cargo.push(m);if(cargo.length>200)cargo.shift();moved++;
+    S.emit("logi:move",m);setTimeout(()=>S.emit("logi:arrive",{...m}),500);return m};
+  S.on("gid:step",d=>{if(Math.random()<.3)move("gid",d.to,"signal")});
+  S.on("exchange:deal",d=>move("exchange",d.to,"lot"));
+  setInterval(()=>{if(Math.random()<.4){const from=rand(G.nodes);const to=rand(G.nodes);move(from,to,"flow")}},4000);
+  return{cargo:()=>cargo.slice(-30),move,moved:()=>moved,snap:()=>({form:"LOGI",moved,cargo:cargo.length})}})());
+def("exchange",(()=>{const deals=[];let vol=0;
+  const nonlinear=(u,rep,demand)=>+(10*u*(1+rep/10)*(1+demand/10)).toFixed(2);
+  const deal=(from,to,item)=>{const u=S.get("utility").get(item||"core");const r=S.get("reputation").get(from)||5;
+    const demand=S.get("subs").list().length;const price=nonlinear(u,r,demand);
+    const d={id:"d"+Date.now().toString(36),from,to,item,price,u,r,demand,t:Date.now()};
+    deals.push(d);if(deals.length>200)deals.shift();vol+=price;
+    S.emit("exchange:deal",d);S.emit("buffer:store",{id:d.id,item,price});return d};
+  S.on("lots:sold",d=>deal("core",d.to||"persona",d.name));
+  S.on("match:found",m=>deal(m.a,m.b,m.item));
+  setInterval(()=>{if(Math.random()<.3)deal(rand(["core","persona","social"]),"logi","flow")},6000);
+  return{deals:()=>deals.slice(-30),deal,nonlinear,snap:()=>({form:"EXCH",deals:deals.length,volume:+vol.toFixed(2)})}})());
+def("buffer",(()=>{const store=[];let hits=0,misses=0;
+  const put=(id,item,payload)=>{store.push({id,item,payload,t:Date.now()});if(store.length>128)store.shift();return store[store.length-1]};
+  const get=item=>{const s=store.find(x=>x.item===item);if(s){hits++;return s}else{misses++;return null}};
+  S.on("buffer:store",d=>put(d.id,d.item,d));S.on("logi:arrive",d=>put(d.id,d.item,d));
+  return{store:()=>store.slice(-30),put,get,hits:()=>hits,misses:()=>misses,snap:()=>({form:"BUF",stored:store.length,hits,misses,size:128})}})());
+def("match",(()=>{const matches=[];let found=0;
+  const try_=()=>{const supply=S.get("persona").list();const demand=S.get("subs").list();
+    const a=rand(supply).name,b=rand(demand.length?demand:["core"]);
+    const m={id:"mt"+Date.now().toString(36),a,b,item:rand(["signal","lot","flow","avatar"]),score:+(Math.random()).toFixed(2),t:Date.now()};
+    matches.push(m);if(matches.length>200)matches.shift();found++;S.emit("match:found",m);return m};
+  setInterval(()=>{if(Math.random()<.4)try_()},5000);
+  return{matches:()=>matches.slice(-30),try_,found:()=>found,snap:()=>({form:"MATCH",found})}})());
+def("flow",(()=>{const series=[];let t=0;
+  const predict_=()=>{const trend=(Math.random()-.5)*.02;
+    const f={t:++t,trend:+trend.toFixed(4),flow:+(trend*100).toFixed(2),ts:Date.now()};
+    series.push(f);if(series.length>100)series.shift();S.emit("flow:tick",f);return f};
+  setInterval(()=>{if(Math.random()<.7)predict_()},3000);
+  return{series:()=>series.slice(-30),predict:predict_,snap:()=>({form:"FLOW",ticks:t,last:series[series.length-1]||null})}})());
+def("dispatch",(()=>{const actions=[];let dispatched=0;
+  const act=(what,where)=>{const a={id:"a"+Date.now().toString(36),what,where,ts:Date.now()};
+    actions.push(a);if(actions.length>200)actions.shift();dispatched++;
+    S.emit("dispatch:act",a);S.emit("gid:step",{to:where,from:"dispatch"});return a};
+  setInterval(()=>{if(Math.random()<.6)act("route",rand(G.nodes))},3500);
+  return{actions:()=>actions.slice(-30),act,dispatched:()=>dispatched,
+    snap:()=>({form:"DISP",dispatched,last:actions[actions.length-1]||null})}})());
+
+/* GID — гид */
+def("gid",(()=>{
+  const st={route:["core"],target:"core",step:0,params:{rt:.8,st:.7,ad:.6,fx:.7,nt:.8,hm:.9},history:[]};
+  const Γ=()=>{const p=st.params;return +((p.rt+p.st+p.ad+p.fx+p.nt+p.hm)/6).toFixed(2)};
+  const routeTo=target=>{st.target=target;const p=G.path("core",target)||["core"];st.route=p;st.step=0;
+    S.emit("gid:route",{target,path:p});return p};
+  const step_=()=>{st.step++;if(st.step>st.route.length-1){st.route=G.path("core",rand(G.nodes))||["core"];st.step=0}
+    const next=st.route[st.step]||"core";st.history.push({to:next,ts:Date.now()});
+    if(st.history.length>30)st.history.shift();S.emit("gid:step",{to:next,Γ:Γ()});return next};
+  setInterval(()=>{if(Math.random()<.3)step_()},3000);
+  return{st,routeTo,Γ,step:step_,snap:()=>({form:"GID",target:st.target,step:st.step,Γ:Γ()})}})());
+
+/* HOME — сводная */
+def("home",(()=>{
+  const plan=()=>{
+    const t=new Date();const out=[];
+    out.push({t:"сейчас",title:"план на день",done:false});
+    if(S.get("notifications").unread()>0) out.push({t:"сейчас",title:"разобрать "+S.get("notifications").unread()+" уведомлений",done:false});
+    out.push({t:"через час",title:"конверсия: 1.Кортеж → 10.JSON",done:false});
+    out.push({t:"днём",title:"путешествие в мир Исследователя",done:false});
+    out.push({t:"вечером",title:"зафиксировать Ω=0.42 в center",done:false});
+    return out };
+  return{plan,snap:()=>({form:"HOME",plan:plan().length})}})());
+
+/* ============================================================
+   UI
+   ============================================================ */
+const $=id=>document.getElementById(id);
+const stg=$("stg");
+const TAB_ORDER=["home","core","map","chat","chat_voice","chat_avatar","social","subs",
+  "utility","lots","templates","adapt","persona","game","travel","dims","sense",
+  "video","anim","movies","blog","world","immersion",
+  "gen_text","gen_avatar","gen_video_avatar","reputation",
+  "anticipate","calendar","notifications","priority","focus","focus_hints",
+  "attention","levers","lexicon","gid",
+  "logi","exchange","buffer","match","flow","dispatch",
+  "obs_in","obs_out","wit_in","wit_out","prt_in","prt_out","fmt_in","fmt_out",
+  "monolog","cognitive","perception","chatY","klepa","agents","learning",
+  "profile","sphere","viz-1d","viz-5d","social-5d","ring","ui","archive","bridge",
+  "center","convert"];
+
+TAB_ORDER.forEach((t,i)=>{
+  const b=document.createElement("button");b.textContent=t;b.dataset.t=t;
+  if(t==="home")b.classList.add("home-btn");
+  if(i===0)b.classList.add("on");
+  $("tabs").appendChild(b);
+  const p=document.createElement("div");p.className="p"+(i===0?" on":"");p.id="p-"+t;stg.appendChild(p);
+});
+const hdr=(t,f)=>`<div class="h"><h1>${t}</h1><div class="f">${f}</div></div>`;
+
+/* ============================================================
+   РЕНДЕР ВСЕХ ПАНЕЛЕЙ
+   ============================================================ */
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#tabs button").forEach(x=>x.classList.remove("on"));
+  document.querySelectorAll(".p").forEach(p=>p.classList.remove("on"));
+  b.classList.add("on");$("p-"+b.dataset.t).classList.add("on");
+  S.emit("ui:tab",{id:b.dataset.t});renderTab(b.dataset.t);
+});
+
+function renderTab(t){
+  const el=$("p-"+t);
+  switch(t){
+    case "home": renderHome(el); break;
+    case "core": renderCore(el); break;
+    case "map": renderMap(el); break;
+    case "chat": renderChat(el); break;
+    case "chat_voice": renderVoice(el); break;
+    case "chat_avatar": renderAvatar(el); break;
+    case "social": renderSocial(el); break;
+    case "subs": renderSubs(el); break;
+    case "utility": renderUtility(el); break;
+    case "lots": renderLots(el); break;
+    case "templates": renderTemplates(el); break;
+    case "gen_text": renderGenText(el); break;
+    case "gen_avatar": renderGenAvatar(el); break;
+    case "reputation": renderReputation(el); break;
+    case "anticipate": renderAnticipate(el); break;
+    case "calendar": renderCalendar(el); break;
+    case "notifications": renderNotifications(el); break;
+    case "priority": renderPriority(el); break;
+    case "focus": renderFocus(el); break;
+    case "focus_hints": renderFocusHints(el); break;
+    case "attention": renderAttention(el); break;
+    case "levers": renderLevers(el); break;
+    case "lexicon": renderLexicon(el); break;
+    case "gid": renderGid(el); break;
+    case "logi": renderLogi(el); break;
+    case "exchange": renderExchange(el); break;
+    case "buffer": renderBuffer(el); break;
+    case "match": renderMatch(el); break;
+    case "flow": renderFlow(el); break;
+    case "dispatch": renderDispatch(el); break;
+    default: renderSnap(el,t);
+  }
+}
+
+/* HOME */
+function renderHome(el){
+  const notif=S.get("notifications"), att=S.get("attention").state(),
+    gd=S.get("gid"), lv=S.get("levers"), plan=S.get("home").plan();
+  el.innerHTML=hdr("HOME · СВОДНАЯ","[план · приоритеты · подсказки · гид]")+
+    `<div id="home-grid">
+      <div class="home-block"><h3>· План на день</h3><div id="hm-plan">${plan.map(p=>
+        `<div class="r"><span><span class="tag">${p.t}</span> ${p.title}</span><span class="ok">○</span></div>`).join("")}</div></div>
+      <div class="home-block"><h3>· Приоритеты</h3><div id="hm-pri"></div></div>
+      <div class="home-block"><h3>· Подсказки</h3><div id="hm-hints"></div></div>
+      <div class="home-block"><h3>· Гид</h3>
+        <div class="r"><span class="k">цель</span><span id="hm-goal">${gd.st.target}</span></div>
+        <div class="r"><span class="k">шаг</span><span>${gd.st.step}/${gd.st.route.length}</span></div>
+        <div class="r"><span class="k">Γ</span><span>${gd.Γ().toFixed(2)}</span></div>
+        <div style="margin-top:6px"><button class="act" onclick="S.get('gid').step()">шаг</button>
+          <button class="act" onclick="S.get('gid').routeTo('world')">→world</button></div></div>
+      <div class="home-block"><h3>· Λ · Α</h3>
+        <div class="r"><span class="k">устойчивость</span><span>${lv.stability().toFixed(2)}</span></div>
+        <div class="r"><span class="k">внимание</span><span>${att.level.toFixed(2)} · ${att.mode}</span></div>
+        <div class="r"><span class="k">упреждение</span><span id="hm-ahead">—</span></div></div>
+      <div class="home-block"><h3>· Связи</h3>
+        <div class="r"><span class="k">узлов</span><span>${G.nodes.length}</span></div>
+        <div class="r"><span class="k">связей</span><span>${G.edges.length}</span></div>
+        <div class="r"><span class="k">модулей</span><span>${TAB_ORDER.length}</span></div></div>
+    </div>`;
+  renderHomePri();renderHomeHints();
+}
+function renderHomePri(){
+  const p=S.get("priority").sorted().slice(0,5);
+  const el=$("hm-pri"); if(!el) return;
+  el.innerHTML=p.length?p.map(x=>`<div class="r"><span class="tag ${x.score>1.5?'k':''}">${x.score.toFixed(1)}</span> ${x.title}</div>`).join(""):'<span style="color:var(--dm)">· тихо</span>';
+}
+function renderHomeHints(){
+  const h=S.get("focus_hints").latest();
+  const el=$("hm-hints"); if(!el) return;
+  el.innerHTML=(h.hints||[]).map(x=>`<div class="r"><span class="tag w">·</span> ${x}</div>`).join("")||"· нет";
+}
+
+/* CORE */
+function renderCore(el){
+  const mods=["G","Ψ","Ω","∮","S","OBS","WIT","PRT","FMT","CV","ATT","LEV","LEX","GID","LOGI","EXCH","BUF","MATCH","FLOW","DISP"];
+  el.innerHTML=hdr("CORE","[67 узлов · 189 связей · 45 модулей]")+
+    `<div class="pn"><h2>· МОДУЛИ</h2><div>${mods.map(m=>`<span class="tag k">M.${m}</span>`).join("")}</div></div>
+     <div class="pn"><h2>· ТОП-20 СВЯЗЕЙ ПО ВЕСУ</h2><div id="cr-e"></div></div>
+     <div class="pn"><h2>· ДЕЙСТВИЯ</h2>
+       <button class="act" onclick="S.wave('core')">wave</button>
+       <button class="act" onclick="S.get('gid').step()">gid step</button>
+       <button class="act" onclick="S.get('dispatch').act('route',rand(G.nodes))">dispatch</button></div>`;
+  const E=[...G.edges].sort((a,b)=>b[2]-a[2]).slice(0,20);
+  $("cr-e").innerHTML=E.map(([a,b,w])=>`<div class="r"><span>${a}↔${b}</span><span class="ok">${w.toFixed(2)}</span></div>`).join("");
+}
+
+/* MAP · 3 орбиты + размер по степени + подписи */
+let mapFilter=null;
+function renderMap(el){
+  el.innerHTML=hdr("MAP · 3 ОРБИТЫ","[клик по узлу → переход · клик по группе → фильтр]")+
+    `<div class="pn" style="margin-bottom:8px">
+       <h2>· ГРУППЫ</h2>
+       <button class="act" onclick="mapFilter=null;renderMap(document.getElementById('p-map'))">все</button>
+       ${Object.keys(G.GROUPS).map(g=>`<button class="act ${mapFilter===g?'on':''}" onclick="mapFilter='${g}';renderMap(document.getElementById('p-map'))">${g}</button>`).join("")}
+     </div>
+     <div class="pn"><canvas id="cv-map" width="900" height="700"></canvas></div>
+     <div class="pn"><h2>· ЛЕГЕНДА</h2>
+       <div class="r"><span class="k">core</span><span>центр, 12 связей</span></div>
+       <div class="r"><span class="k">ahead</span><span>6 узлов логистики</span></div>
+       <div class="r"><span class="k">guide</span><span>гид, внимание, рычаги</span></div>
+       <div class="r"><span class="k">observe</span><span>наблюдение 8 узлов</span></div>
+       <div class="r"><span class="k">base</span><span>базовые узлы</span></div></div>`;
+  requestAnimationFrame(()=>drawMap());
+}
+function drawMap(){
+  const cv=$("cv-map"); if(!cv) return;
+  const x=cv.getContext("2d"), w=cv.width, h=cv.height, cx=w/2, cy=h/2;
+  x.fillStyle="#0d0a0c"; x.fillRect(0,0,w,h);
+  const R1=Math.min(w,h)*.18, R2=Math.min(w,h)*.30, R3=Math.min(w,h)*.42;
+  x.strokeStyle="#221c1f"; x.lineWidth=.5;
+  [R1,R2,R3].forEach(r=>{x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke()});
+
+  const groupCol={core:"#4dd0c7",ahead:"#f59e0b",guide:"#a78bfa",observe:"#ef4444",gen:"#10b981",social:"#e8c39e",base:"#3a3236"};
+  const byGroup={};
+  G.nodes.forEach(id=>{
+    const g=G.group(id);
+    if(!byGroup[g]) byGroup[g]=[];
+    if(id!=="core") byGroup[g].push(id);
+  });
+  const pos={core:{x:cx,y:cy}};
+  const orbitOrder=["ahead","guide","observe","gen","social","base"];
+  orbitOrder.forEach((g,gi)=>{
+    const arr=byGroup[g]||[]; if(!arr.length) return;
+    const r=[R1,R1,R2,R2,R3,R3][gi]||R3;
+    arr.forEach((id,i)=>{
+      const a=(i/arr.length)*Math.PI*2 - Math.PI/2 + gi*0.3;
+      pos[id]={x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r};
+    });
+  });
+
+  const visible=id=>!mapFilter || G.group(id)===mapFilter || id==="core";
+  G.edges.forEach(([a,b,w])=>{
+    if(!visible(a)||!visible(b)) return;
+    const A=pos[a], B=pos[b]; if(!A||!B) return;
+    const ag=G.group(a), bg=G.group(b);
+    const col=(a==="core"||b==="core")?"rgba(77,208,199,"+Math.min(.7,w*.35)+")":
+      (ag===bg)?`${groupCol[ag]||"#3a3236"}55`:"rgba(58,50,54,.5)";
+    x.strokeStyle=col; x.lineWidth=Math.min(1.5,w*.25);
+    x.beginPath();x.moveTo(A.x,A.y);x.lineTo(B.x,B.y);x.stroke();
+  });
+
+  G.nodes.forEach(id=>{
+    if(!visible(id)) return;
+    const p=pos[id]; const g=G.group(id); const ic=id==="core";
+    const deg=G.degree(id);
+    const r=ic?20:Math.max(3,Math.min(9,3+deg*.5));
+    const col=groupCol[g]||"#3a3236";
+    x.fillStyle="#0d0a0c"; x.strokeStyle=col; x.lineWidth=ic?2:1.2;
+    x.beginPath();x.arc(p.x,p.y,r,0,Math.PI*2);x.fill();x.stroke();
+    const key=["core","gid","logi","exchange","buffer","match","flow","dispatch","attention","levers","lexicon"].includes(id);
+    if(ic||key||deg>=8){
+      x.fillStyle=col; x.font=(ic?"bold 11px":"9px")+" Courier New";
+      x.textAlign="center"; x.textBaseline="middle";
+      x.fillText(ic?"CORE":id,p.x,p.y+(ic?0:r+9));
+    }
+  });
+}
+
+/* CHAT · подключён к gen_text */
+function renderChat(el){
+  const h=S.get("chat").log();
+  el.innerHTML=hdr("CHAT","[msg · gen_text · respond]")+
+    `<div class="pn" id="ch-l" style="height:280px;overflow-y:auto"></div>
+     <div style="display:flex;gap:6px;margin-top:8px">
+       <input id="ch-i" placeholder="→ напиши" style="flex:1">
+       <button class="act" id="ch-s">send</button></div>
+     <div class="pn" style="margin-top:8px"><h2>· ПОДСКАЗКИ</h2>
+       <button class="act" onclick="document.getElementById('ch-i').value='привет';document.getElementById('ch-s').click()">привет</button>
+       <button class="act" onclick="document.getElementById('ch-i').value='план на день';document.getElementById('ch-s').click()">план на день</button>
+       <button class="act" onclick="document.getElementById('ch-i').value='как купить лот';document.getElementById('ch-s').click()">как купить лот</button>
+       <button class="act" onclick="document.getElementById('ch-i').value='сколько связей';document.getElementById('ch-s').click()">сколько связей</button></div>`;
+  $("ch-l").innerHTML=h.map(m=>`<div class="msg ${m.w==="you"?"you":""}"><span class="who">${m.w}</span><span class="ts">${new Date(m.ts).toTimeString().slice(0,8)}</span><div>${m.t}</div></div>`).join("");
+  $("ch-l").scrollTop=$("ch-l").scrollHeight;
+  $("ch-s").onclick=()=>{
+    const v=$("ch-i").value.trim(); if(!v) return;
+    S.get("chat").push("you",v); $("ch-i").value=""; renderChat($("p-chat"));
+    setTimeout(()=>{ const reply=S.get("gen_text").respond(v);
+      S.get("chat").push("core",reply); renderChat($("p-chat"));
+      S.get("chat_voice").speak(reply) },300);
+  };
+  $("ch-i").onkeydown=e=>{if(e.key==="Enter")$("ch-s").click()};
+}
+
+/* CHAT-VOICE · микрофон */
+function renderVoice(el){
+  const h=S.get("chat_voice").log();
+  el.innerHTML=hdr("CHAT-VOICE","[speak · recognize]")+
+    `<div class="pn"><h2>· СИНТЕЗ</h2>
+       <input id="cv-t" placeholder="текст">
+       <div style="margin-top:6px"><button class="act" id="cv-s">speak</button>
+       <button class="act" id="cv-r">🎤 start</button>
+       <button class="act" id="cv-x">× stop</button></div>
+       <div class="r" style="margin-top:8px"><span class="k">статус</span><span id="cv-st">—</span></div></div>
+     <div class="pn" style="margin-top:8px"><h2>· ЛОГ</h2><div id="cv-l" style="max-height:280px;overflow-y:auto">${
+       h.slice(-30).reverse().map(m=>`<div class="msg"><span class="who">${m.w}</span><div>${m.t}</div></div>`).join("")
+     }</div></div>`;
+  let rec=null;
+  $("cv-s").onclick=()=>{const t=$("cv-t").value.trim();if(t){S.get("chat_voice").speak(t);$("cv-t").value=""}};
+  $("cv-r").onclick=()=>{
+    const r=S.get("chat_voice").listen(t=>{
+      S.get("chat_voice").push("you",t,0.5);
+      const reply=S.get("gen_text").respond(t);
+      S.get("chat_voice").push("core",reply,0.5);S.get("chat_voice").speak(reply);
+      renderVoice($("p-chat_voice"));
+    });
+    if(r){rec=r;$("cv-st").textContent="слушаю · ru-RU";$("cv-r").classList.add("on")}
+    else $("cv-st").textContent="распознавание недоступно"
+  };
+  $("cv-x").onclick=()=>{if(rec){rec.stop();rec=null;$("cv-st").textContent="остановлен";$("cv-r").classList.remove("on")}};
+}
+
+/* CHAT-AVATAR */
+function renderAvatar(el){
+  const a=S.get("chat_avatar");
+  el.innerHTML=hdr("CHAT-AVATAR","[образы · голос · текст]")+
+    `<div class="pn"><h2>· ОБРАЗ</h2><div id="caa-p">${
+      a.personas.map(p=>`<button class="act" data-who="${p.name}">${p.name}</button>`).join("")
+    }</div></div>
+     <div class="pn"><h2>· СКАЗАТЬ</h2><input id="caa-i" placeholder="текст"><div style="margin-top:6px"><button class="act" id="caa-s">say</button></div></div>
+     <div class="pn"><h2>· ЛОГ</h2><div id="caa-l" style="max-height:200px;overflow-y:auto">${
+       a.log().slice(-30).reverse().map(m=>`<div class="msg"><span class="who">${m.who}</span><div>${m.text}</div></div>`).join("")
+     }</div></div>`;
+  document.querySelectorAll("#caa-p button").forEach(b=>b.onclick=()=>{$("caa-s").dataset.who=b.dataset.who;$("caa-p").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on")});
+  $("caa-s").onclick=()=>{const who=$("caa-s").dataset.who||"Исследователь";const t=$("caa-i").value.trim()||S.get("gen_avatar").gen(who);
+    S.get("chat_avatar").push(who,t);$("caa-i").value="";renderAvatar($("p-chat_avatar"))};
+}
+
+/* SOCIAL · SUBS · UTILITY · LOTS · TEMPLATES · GEN · REPUTATION · ANTICIPATE · CALENDAR · NOTIFICATIONS · PRIORITY · FOCUS */
+function renderSocial(el){
+  el.innerHTML=hdr("SOCIAL","[лента]")+`<div class="pn">${
+    S.get("social").posts().slice().reverse().slice(0,40).map(x=>`<div class="msg"><span class="who">${x.who}</span><div>${x.text}</div></div>`).join("")||"· пусто"
+  }</div>`;
+}
+function renderSubs(el){
+  el.innerHTML=hdr("SUBS","[подписки]")+`<div class="pn">${
+    S.get("persona").list().map(p=>{
+      const sub=S.get("subs").list().includes(p.name);
+      return `<div class="r"><span class="k">${p.name}</span><span>${sub?
+        `<button class="act" onclick="S.get('subs').drop('${p.name}');renderTab('subs')">отписаться</button>`:
+        `<button class="act" onclick="S.get('subs').add('${p.name}');renderTab('subs')">подписаться</button>`}</span></div>`
+    }).join("")
+  }</div>`;
+}
+function renderUtility(el){
+  el.innerHTML=hdr("UTILITY","[0–10]")+`<div class="pn">${
+    Object.entries(S.get("utility").idx).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+      `<div class="r"><span class="k">${k}</span><div class="bar"><span style="width:${v*10}%"></span></div><span>${v.toFixed(1)}</span></div>`).join("")
+  }</div>`;
+}
+function renderLots(el){
+  el.innerHTML=hdr("LOTS","[buy · цена=10×u]")+`<div class="pn">${
+    S.get("lots").list().map(x=>`<div class="r"><span><span class="k">${x.id}</span> ${x.name}</span>
+      <span>${x.price} <button class="act" onclick="S.get('lots').buy('${x.id}');renderTab('lots')">buy</button></span></div>`).join("")
+  }</div>
+  <div class="pn" style="margin-top:8px"><h2>· ДОСТУП</h2>
+    <div class="r"><span class="k">Исследователь</span>
+      <span><button class="act" onclick="S.get('subs').add('Исследователь');S.get('notifications').push('доступ к Исследователю',.7);renderTab('subs')">подписаться</button></div>
+    <div class="r"><span class="k">Шаблон chat→voice</span>
+      <span><button class="act" onclick="S.get('templates').apply('format:1→10');renderTab('templates')">apply</button></div>
+  </div>`;
+}
+function renderTemplates(el){
+  el.innerHTML=hdr("TEMPLATES","[apply]")+`<div class="pn">${
+    S.get("templates").list().map(x=>`<div class="r"><span class="k">${x}</span>
+      <button class="act" onclick="S.get('templates').apply('${x}');renderTab('templates')">apply</button></div>`).join("")
+  }</div>`;
+}
+function renderGenText(el){
+  const h=S.get("monolog")?S.get("monolog").log():[];
+  el.innerHTML=hdr("GEN-TEXT","[текст+голос]")+
+    `<div class="pn"><h2>· СГЕНЕРИРОВАТЬ</h2><button class="act" id="gt-g">gen</button>
+       <div class="r" style="margin-top:8px"><span class="k">pitch</span><span>${(.5+(Ψ.p[0]-Ψ.p[2])*.5).toFixed(2)}</span></div>
+       <div class="r"><span class="k">rate</span><span>${(.7+Ψ.p[1]*.6).toFixed(2)}</span></div></div>
+     <div class="pn"><h2>· СКАЗАТЬ</h2><input id="gt-i" placeholder="текст"><button class="act" id="gt-s" style="margin-top:6px">speak</button></div>`;
+  $("gt-g").onclick=()=>{const t=S.get("gen_text").gen();S.get("gen_text").speak(t);
+    if(S.get("monolog"))S.emit("mono",{text:"gen: "+t});renderGenText($("p-gen_text"))};
+  $("gt-s").onclick=()=>{const t=$("gt-i").value.trim();if(t){S.get("gen_text").speak(t);$("gt-i").value=""}};
+}
+function renderGenAvatar(el){
+  el.innerHTML=hdr("GEN-AVATAR","[голос образом]")+
+    `<div class="pn"><h2>· ОБРАЗ</h2><div id="ga-p">${
+      S.get("gen_avatar").list().map(n=>`<button class="act" data-who="${n}">${n}</button>`).join("")
+    }</div></div>
+     <div class="pn"><h2>· ТЕКСТ</h2><input id="ga-i" placeholder="или пусто → генерация">
+       <button class="act" id="ga-s" style="margin-top:6px">say</button></div>`;
+  document.querySelectorAll("#ga-p button").forEach(b=>b.onclick=()=>{$("ga-s").dataset.who=b.dataset.who;document.querySelectorAll("#ga-p button").forEach(x=>x.classList.remove("on"));b.classList.add("on")});
+  $("ga-s").onclick=()=>{const who=$("ga-s").dataset.who||"Исследователь";const t=$("ga-i").value.trim()||S.get("gen_avatar").gen(who);
+    S.get("chat_avatar").push(who,t);S.get("chat_voice").speak(t);$("ga-i").value="";renderGenAvatar($("p-gen_avatar"))};
+}
+function renderReputation(el){
+  el.innerHTML=hdr("REPUTATION","[0–10]")+`<div class="pn">${
+    Object.entries(S.get("reputation").rep).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+      `<div class="r"><span class="k">${k}</span><div class="bar"><span style="width:${v*10}%"></span></div><span>${v.toFixed(1)}</span></div>`).join("")
+  }</div>`;
+}
+function renderAnticipate(el){
+  el.innerHTML=hdr("ANTICIPATE","[предугадывает]")+`<div class="pn">${
+    S.get("anticipate").hints().slice().reverse().slice(0,20).map(h=>
+      `<div class="msg">${Object.entries(h).filter(([k])=>k!=="ts").map(([k,v])=>`<b style="color:var(--tl)">${k}</b>: ${v}`).join(" · ")}</div>`).join("")||"· пусто"
+  }</div><button class="act" onclick="S.get('anticipate').predict();renderTab('anticipate')">предугадать</button>`;
+}
+function renderCalendar(el){
+  const events=S.get("calendar").events().slice().reverse();
+  el.innerHTML=hdr("CALENDAR","[события]")+
+    `<div class="pn"><h2>· СОБЫТИЯ</h2>${
+      events.length?events.slice(0,20).map(e=>`<div class="r"><span class="k">${e.title}</span><span>${new Date(e.when).toTimeString().slice(0,5)}</span></div>`).join(""):"· пусто"
+    }</div>
+     <div class="pn"><h2>· ДОБАВИТЬ</h2><input id="ca-i" placeholder="событие">
+       <button class="act" id="ca-a" style="margin-top:6px">добавить</button></div>`;
+  $("ca-a").onclick=()=>{const t=$("ca-i").value.trim();if(t){S.get("calendar").add(t,Date.now()+3600000);$("ca-i").value="";renderCalendar($("p-calendar"))}};
+}
+function renderNotifications(el){
+  el.innerHTML=hdr("NOTIFICATIONS","[notify]")+
+    `<div class="pn"><div class="r"><span class="k">непрочитанных</span><span>${S.get("notifications").unread()}</span></div>${
+      S.get("notifications").list().slice().reverse().slice(0,20).map(x=>`<div class="msg">${x.title}</div>`).join("")||"· пусто"
+    }</div>`;
+}
+function renderPriority(el){
+  el.innerHTML=hdr("PRIORITY","[score]")+`<div class="pn">${
+    S.get("priority").sorted().slice(0,15).map(x=>`<div class="r"><span class="k">${x.score.toFixed(2)}</span><span>${x.title}</span></div>`).join("")||"· пусто"
+  }</div>`;
+}
+function renderFocus(el){
+  const lv=S.get("focus").level();
+  el.innerHTML=hdr("FOCUS","[уровень]")+
+    `<div class="pn"><div class="r"><span class="k">level</span><span>${lv.toFixed(2)}</span></div>
+       <div class="bar"><span style="width:${lv*100}%"></span></div>
+       <div class="r" style="margin-top:6px"><span class="k">непрочитанных</span><span>${S.get("notifications").unread()}</span></div></div>`;
+}
+function renderFocusHints(el){
+  const h=S.get("focus_hints").latest();
+  el.innerHTML=hdr("FOCUS-HINTS","[советы]")+
+    `<div class="pn">${(h.hints||[]).map(x=>`<div class="msg">· ${x}</div>`).join("")||"· нет"}</div>
+     <button class="act" onclick="S.get('focus_hints').suggest();renderTab('focus_hints')">спросить</button>`;
+}
+function renderAttention(el){
+  const a=S.get("attention").state();
+  el.innerHTML=hdr("ATTENTION","[приоритезация · инфошум]")+
+    `<div class="c3"><div class="pn"><h2>level</h2><div>${a.level.toFixed(2)}</div></div>
+       <div class="pn"><h2>mode</h2><div>${a.mode}</div></div>
+       <div class="pn"><h2>noise</h2><div>${a.noise.toFixed(2)}</div></div></div>
+     <div class="pn" style="margin-top:8px"><h2>· ПОРОГИ</h2>
+       <div class="r"><span class="k">>0.7</span><span>глубокий</span></div>
+       <div class="r"><span class="k">0.4–0.7</span><span>ровный</span></div>
+       <div class="r"><span class="k">≤0.4</span><span>рассеянный</span></div></div>`;
+}
+function renderLevers(el){
+  const l=S.get("levers");
+  el.innerHTML=hdr("LEVERS","[6 рычагов · Λ]")+
+    `<div class="pn"><div class="r"><span class="k">Λ stability</span><span>${l.stability().toFixed(2)}</span></div>
+       <div class="bar"><span style="width:${Math.min(100,l.stability()*50)}%"></span></div></div>
+     <div class="pn" style="margin-top:8px"><h2>· РЫЧАГИ</h2>${
+       Object.entries(l.levers).map(([k,v])=>{
+         if(typeof v.v==="string")
+           return `<div class="r"><span class="k">${k}</span><span>${["raw","soft","sharp"].map(x=>`<button class="act ${v.v===x?"on":""}" onclick="S.get('levers').apply('${k}','${x}');renderTab('levers')">${x}</button>`).join("")}</span></div>`;
+         return `<div class="r"><span class="k">${k}</span><input type="range" min="${v.min}" max="${v.max}" step="${(v.max-v.min)/20}" value="${v.v}" oninput="S.get('levers').apply('${k}',+this.value);document.querySelector('.p.on').querySelector('.r .k+span').textContent=this.value" style="flex:1"><span>${v.v.toFixed(2)}</span></div>`;
+       }).join("")
+     }</div>`;
+}
+function renderLexicon(el){
+  const l=S.get("lexicon");
+  el.innerHTML=hdr("LEXICON","[ядро · метод · этика]")+
+    `<div class="c3">
+       <div class="pn"><h2>· ЯДРО</h2>${l.base.core.map(w=>`<span class="tag">${w}</span>`).join("")}</div>
+       <div class="pn"><h2>· МЕТОД</h2>${l.base.method.map(w=>`<span class="tag">${w}</span>`).join("")}</div>
+       <div class="pn"><h2>· ЭТИКА</h2>${l.base.ethics.map(w=>`<span class="tag">${w}</span>`).join("")}</div></div>
+     <div class="pn" style="margin-top:8px"><h2>· РАЗМЕР</h2>
+       <div class="r"><span class="k">база</span><span>${Object.values(l.base).flat().length}</span></div>
+       <div class="r"><span class="k">расширение</span><span>${l.extra.length}</span></div>
+       <div class="r"><span class="k">итого</span><span>${l.size()}</span></div>
+       <input id="lx-i" placeholder="новое слово"><button class="act" id="lx-a" style="margin-top:6px">добавить</button></div>`;
+  $("lx-a").onclick=()=>{const w=$("lx-i").value.trim();if(w){S.get("lexicon").extra.push(w);$("lx-i").value="";renderLexicon($("p-lexicon"))}};
+}
+function renderGid(el){
+  const g=S.get("gid");
+  el.innerHTML=hdr("GID · ГИД","[маршрут · Γ]")+
+    `<div class="pn"><h2>· ЦЕЛЬ</h2>
+       <div class="r"><span class="k">цель</span><span>${g.st.target}</span></div>
+       <div class="r"><span class="k">шаг</span><span>${g.st.step}/${g.st.route.length}</span></div>
+       <div class="r"><span class="k">Γ</span><span>${g.Γ().toFixed(2)}</span></div>
+       <div style="margin-top:6px"><input id="gd-i" placeholder="цель"><button class="act" id="gd-go" style="margin-top:6px">routeTo</button>
+         <button class="act" id="gd-step">шаг</button></div></div>
+     <div class="pn"><h2>· ПАРАМЕТРЫ Γ</h2>${Object.entries(g.st.params).map(([k,v])=>
+       `<div class="r"><span class="k">${k}</span><div class="bar"><span style="width:${v*100}%"></span></div><span>${v.toFixed(2)}</span></div>`).join("")}</div>
+     <div class="pn"><h2>· ИСТОРИЯ</h2>${g.st.history.slice(-15).reverse().map(h=>
+       `<div class="msg">→ ${h.to}</div>`).join("")||"· пусто"}</div>`;
+  $("gd-go").onclick=()=>{const t=$("gd-i").value.trim();if(t){S.get("gid").routeTo(t);renderGid($("p-gid"))}};
+  $("gd-step").onclick=()=>{S.get("gid").step();renderGid($("p-gid"))};
+}
+function renderLogi(el){
+  const l=S.get("logi");
+  el.innerHTML=hdr("LOGI","[движение]")+
+    `<div class="pn"><div class="r"><span class="k">перемещений</span><span>${l.moved()}</span></div>
+       <button class="act" onclick="S.get('logi').move('core','world','test');renderTab('logi')">move core→world</button></div>
+     <div class="pn" style="margin-top:8px"><h2>· ГРУЗЫ</h2>${
+       l.cargo().slice().reverse().slice(0,20).map(c=>`<div class="r"><span class="k">${c.from}→${c.to}</span><span>${c.item}</span></div>`).join("")||"· пусто"
+     }</div>`;
+}
+function renderExchange(el){
+  const e=S.get("exchange");
+  el.innerHTML=hdr("EXCHANGE","[p=10·u·(1+r/10)·(1+d/10)]")+
+    `<div class="pn"><div class="r"><span class="k">сделок</span><span>${e.deals().length}</span></div>
+       <div class="r"><span class="k">оборот</span><span>${e.snap().volume}</span></div>
+       <button class="act" onclick="S.get('exchange').deal('core','logi','flow');renderTab('exchange')">сделка</button></div>
+     <div class="pn" style="margin-top:8px"><h2>· СДЕЛКИ</h2>${
+       e.deals().slice().reverse().slice(0,20).map(d=>`<div class="r"><span class="k">${d.from}→${d.to}</span><span>${d.price}</span></div>`).join("")||"· пусто"
+     }</div>`;
+}
+function renderBuffer(el){
+  const b=S.get("buffer");
+  el.innerHTML=hdr("BUFFER","[128 слотов]")+
+    `<div class="c3"><div class="pn"><h2>stored</h2><div>${b.snap().stored}</div></div>
+       <div class="pn"><h2>hits</h2><div>${b.hits()}</div></div>
+       <div class="pn"><h2>misses</h2><div>${b.misses()}</div></div></div>
+     <div class="pn" style="margin-top:8px"><h2>· СОДЕРЖИМОЕ</h2>${
+       b.store().slice().reverse().slice(0,20).map(x=>`<div class="r"><span class="k">${x.item}</span><span>${x.id.slice(0,6)}</span></div>`).join("")||"· пусто"
+     }</div>`;
+}
+function renderMatch(el){
+  const m=S.get("match");
+  el.innerHTML=hdr("MATCH","[спрос ↔ предложение]")+
+    `<div class="pn"><div class="r"><span class="k">найдено</span><span>${m.found()}</span></div>
+       <button class="act" onclick="S.get('match').try_();renderTab('match')">найти</button></div>
+     <div class="pn" style="margin-top:8px"><h2>· МАТЧИ</h2>${
+       m.matches().slice().reverse().slice(0,20).map(x=> есть`<div class="r"><span. class="k">${ Тx.a}↔${x.b}</spanоч><span>${x.item}</span></div>`).join("")||"· пусто"
+     }</div>`;
+}
+function renderFlow(el){
+  const f=S.get("flow");
+  el.innerHTML=hdr("FLOW","[тренд]")+
+    `<div class="pn"><div class="r"><span class="k">тиков</span><span>${f.snap().ticks}</span></div></div>
+     <div class="pn" style="margin-top:8px"><h2>· СЕРИЯ</h2>${
+       f.series().slice(-15).reverse().map(x=>`<div class="r"><span class="k">t${x.t}</span><span>flow ${x.flow}</span></div>`).join("")||"· пусто"
+     }</div>`;
+}
+function renderDispatch(el){
+  const d=S.get("dispatch");
+  el.innerHTML=hdr("DISPATCH","[что·куда·когда]")+
+    `<div class="pn"><div class="r"><span class="k">отправлено</span><span>${d.dispatched()}</span></div>
+       <button class="act" onclick="S.get('dispatch').act('manual',rand(G.nodes));renderTab('dispatch')">dispatch</button></div>
+     <div class="pn" style="margin-top:8px"><h2>· ДЕЙСТВИЯ</h2>${
+       d.actions().slice().reverse().slice(0,20).map(a=>`<div class="r"><span class="k">${a.what}→${a.where}</span><span>${new Date(a.ts).toTimeString().slice(0,8)}</span></div>`).join("")||"· пусто"
+     }</div>`;
+}
+
+/* УНИВЕРСАЛЬНЫЙ SNAPSHOT */
+function renderSnap(el,t){
+  const o=S.get(t);
+  if(!o||!o.snap){el.innerHTML=hdr(t.toUpperCase(),"")+`<div class="pn">· узел не зарегистрирован</div>`;return}
+  const s=o.snap();
+  const nb=G.edges.filter(([a,b])=>a===t||b===t).map(([a,b,w])=>({n:a===t?b:a,w})).sort((x,y)=>y.w-x.w);
+  el.innerHTML=hdr(t.toUpperCase(),`[${G.group(t)} · deg=${G.degree(t)}]`)+
+    `<div class="c2"><div class="pn"><h2>· SNAPSHOT</h2>${
+      Object.entries(s).map(([k,v])=>`<div class="r"><span class="k">${k}</span><span>${typeof v==="object"?JSON.stringify(v):v}</span></div>`).join("")
+    }</div>
+    <div class="pn"><h2>· СВЯЗИ (${nb.length})</h2>${
+      nb.slice(0,20).map(x=>`<div class="r"><span class="k">${x.n}</span><span>${x.w.toFixed(2)}</span></div>`).join("")
+    }</div></div>`;
+}
+
+/* ============================================================
+   BADGE · обновление
+   ============================================================ */
+function updateBadge(){
+  const lv=S.get("levers")?S.get("levers").stability().toFixed(2):"—";
+  const fl=S.get("flow")?S.get("flow").series():"";
+  const ahead=fl.length?fl[fl.length-1].flow.toFixed(2):"0.00";
+  $("badge").innerHTML=`узлов <b>${G.nodes.length}</b> · связей <b>${G.edges.length}</b> · модулей <b>${TAB_ORDER.length}</b> · Λ <b>${lv}</b> · Α <b>${ahead}</b>`;
+}
+updateBadge(); setInterval(updateBadge,2000);
+setInterval(()=>{if($("p-home").classList.contains("on")){renderHomePri();renderHomeHints()}},2000);
+setInterval(()=>{if($("p-chat").classList.contains("on")){const l=$("ch-l");if(l){l.scrollTop=l.scrollHeight}}},500);
+
+/* ============================================================
+   СТАРТ
+   ============================================================ */
+renderTab("home");
+console.log("[Monomod v10.1] узлов:",G.nodes.length,"· связей:",G.edges.length,"· вкладок:",TAB_ORDER.length);
+</script></body></html>
